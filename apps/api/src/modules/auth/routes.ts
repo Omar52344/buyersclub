@@ -37,7 +37,10 @@ function meta(request: FastifyRequest) {
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/auth/signup/start', async (request, reply) => {
+  app.post(
+    '/auth/signup/start',
+    { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } },
+    async (request, reply) => {
     const body = signupSchema.parse(request.body);
     return reply.status(201).send(await startSignup(body, meta(request)));
   });
@@ -71,12 +74,18 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return verifyLoginOtp(body, meta(request));
   });
 
-  app.post('/auth/otp/resend', async (request) => {
+  app.post(
+    '/auth/otp/resend',
+    { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
+    async (request) => {
     const body = otpRequestSchema.parse(request.body);
     return resendOtp(body, meta(request));
   });
 
-  app.post('/auth/password/reset/request', async (request) => {
+  app.post(
+    '/auth/password/reset/request',
+    { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
+    async (request) => {
     const body = passwordResetRequestSchema.parse(request.body);
     return requestPasswordReset(body, meta(request));
   });

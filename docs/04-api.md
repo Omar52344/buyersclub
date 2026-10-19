@@ -233,7 +233,7 @@ Cualquier otra transición devuelve `422 ORDER_STATE_INVALID`.
 | GET | `/conversations/:id/messages` | `?before=&limit=30` |
 | POST | `/conversations/:id/messages` | `{body?, fileId?}` |
 | POST | `/conversations/:id/read` | Marca leído |
-| WS | `/realtime?token=…` | *(F7)* Eventos en vivo; el MVP usa polling cada 4 s |
+| WS | `/realtime?token=…` | Eventos en vivo: `ready`, `message.created`, `order.status_changed`, `payment.updated` |
 
 Eventos del WebSocket:
 
@@ -251,11 +251,13 @@ perdidos (el WS no es la fuente de verdad).
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/notifications` | Bandeja in-app, `?unread=true&cursor=` |
+| GET | `/notifications` | Bandeja in-app, `?unread=true` |
 | POST | `/notifications/read` | `{ids?: [...]}` o todas |
+| POST | `/me/devices` | Registra `{expoPushToken, platform}` |
+| DELETE | `/me/devices/:token` | Desregistra el dispositivo |
 
-Push (servidor → Expo): se envía un job por evento con `title`, `body`,
-`data: { deeplink }`. Tipos: `order.status_changed`, `payment.evidence_received`,
+Push (servidor → Expo): se envía un POST al servicio de Expo con `title`, `body` y
+`data: { deeplink }`. Los tokens inválidos (`DeviceNotRegistered`) se eliminan. Tipos: `order.status_changed`, `payment.evidence_received`,
 `payment.validated`, `payment.rejected`, `chat.message`, `order.new` (vendedor).
 
 ## 9. Analítica

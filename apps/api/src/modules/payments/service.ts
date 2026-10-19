@@ -10,11 +10,16 @@ import {
 } from '../../db/schema';
 import { AppError } from '../../errors';
 import { getOrderDetail } from '../orders/service';
+import { notifyUser } from '../notifications/service';
+import { publishToUser } from '../../lib/realtime';
+import { recordAudit } from '../../lib/audit';
 
 async function loadOrder(orderId: string) {
   const [row] = await db
     .select({
       id: orders.id,
+      code: orders.code,
+      businessId: orders.businessId,
       buyerUserId: orders.buyerUserId,
       businessOwnerUserId: businesses.ownerUserId,
       status: orders.status,
@@ -114,7 +119,26 @@ export async function submitPaymentEvidence(
       .where(eq(orders.id, orderId));
   });
 
-  return getOrderDetail(userId, orderId);
+  const detail = await getOrderDetail(userId, orderId);
+  void notifyUser(order.businessOwnerUserId, {
+    type: 'payment.evidence',
+    title: 'Comprobante recibido',
+    body: `Pedido ${order.code} · ${order.totalCents / 100} ${order.currency}`,
+    data: { orderId, deeplink: '/vendor-orders' },
+  });
+  publishToUser(order.businessOwnerUserId, {
+    type: 'payment.updated',
+    orderId,
+    status: 'evidence_submitted',
+  });
+  await recordAudit({
+    actorUserId: userId,
+    businessId: order.businessId,
+    action: 'payment.evidence',
+    entityType: 'order',
+    entityId: orderId,
+  });
+  return detail;
 }
 
 export async function validatePayment(userId: string, paymentId: string) {
@@ -161,7 +185,26 @@ export async function validatePayment(userId: string, paymentId: string) {
     }
   });
 
-  return getOrderDetail(userId, order.id);
+  const detail = await getOrderDetail(userId, order.id);
+  void notifyUser(order.buyerUserId, {
+    type: 'payment.validated',
+    title: 'Pago validado',
+    body: `Tu pedido ${order.code} fue aceptado.`,
+    data: { orderId: order.id, deeplink: `/order?id=${order.id}` },
+  });
+  publishToUser(order.buyerUserId, {
+    type: 'payment.updated',
+    orderId: order.id,
+    status: 'validated',
+  });
+  await recordAudit({
+    actorUserId: userId,
+    businessId: order.businessId,
+    action: 'payment.validate',
+    entityType: 'order',
+    entityId: order.id,
+  });
+  return detail;
 }
 
 export async function rejectPayment(userId: string, paymentId: string, reason: string) {
@@ -191,5 +234,25 @@ export async function rejectPayment(userId: string, paymentId: string, reason: s
       .where(eq(orders.id, order.id));
   });
 
-  return getOrderDetail(userId, order.id);
+  const detail = await getOrderDetail(userId, order.id);
+  void notifyUser(order.buyerUserId, {
+    type: 'payment.rejected',
+    title: 'Comprobante rechazado',
+    body: reason,
+    data: { orderId: order.id, deeplink: `/order?id=${order.id}` },
+  });
+  publishToUser(order.buyerUserId, {
+    type: 'payment.updated',
+    orderId: order.id,
+    status: 'rejected',
+  });
+  await recordAudit({
+    actorUserId: userId,
+    businessId: order.businessId,
+    action: 'payment.reject',
+    entityType: 'order',
+    entityId: order.id,
+    metadata: { reason },
+  });
+  return detail;
 }

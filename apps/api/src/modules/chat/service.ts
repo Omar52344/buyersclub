@@ -10,6 +10,8 @@ import {
 } from '../../db/schema';
 import { AppError } from '../../errors';
 import { buildFileUrl } from '../../lib/file-token';
+import { notifyUser } from '../notifications/service';
+import { publishToUser } from '../../lib/realtime';
 
 interface ConversationRow {
   id: string;
@@ -216,7 +218,27 @@ export async function sendMessage(
     .set({ lastMessageAt: message.createdAt })
     .where(eq(conversations.id, row.id));
 
-  return messageDto(message, userId);
+  const dto = await messageDto(message, userId);
+  const recipientId =
+    row.buyerUserId === userId ? row.businessOwnerUserId : row.buyerUserId;
+  const recipientName =
+    recipientId === row.businessOwnerUserId
+      ? row.buyerName ?? 'Cliente'
+      : row.businessName;
+
+  void notifyUser(recipientId, {
+    type: 'chat.message',
+    title: `Nuevo mensaje de ${recipientName}`,
+    body: body ?? (input.fileId ? '📷 Imagen' : 'Nuevo mensaje'),
+    data: { conversationId, deeplink: `/chat?id=${conversationId}` },
+  });
+  publishToUser(recipientId, {
+    type: 'message.created',
+    conversationId,
+    messageId: message.id,
+  });
+
+  return dto;
 }
 
 export async function markRead(userId: string, conversationId: string) {

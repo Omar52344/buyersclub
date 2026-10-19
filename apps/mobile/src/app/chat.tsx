@@ -21,6 +21,7 @@ import {
   type ChatMessage,
 } from '../lib/chat';
 import { pickImage, uploadImage } from '../lib/files';
+import { connectRealtime } from '../lib/realtime';
 import { colors, radius, spacing } from '../theme';
 
 function timeLabel(value: string): string {
@@ -72,13 +73,19 @@ export default function ChatScreen() {
     }
 
     void load(true);
+    const disconnect = connectRealtime((event) => {
+      if (event.type === 'message.created' && event.conversationId === id) {
+        void load(false);
+      }
+    });
     const timer = setInterval(() => {
       void load(false);
-    }, 4000);
+    }, 15000);
 
     return () => {
       active = false;
       clearInterval(timer);
+      disconnect();
     };
   }, [id]);
 

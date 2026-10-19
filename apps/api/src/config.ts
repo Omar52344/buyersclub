@@ -18,6 +18,12 @@ const envSchema = z.object({
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   UPLOAD_DIR: z.string().default('.uploads'),
   DEFAULT_TIMEZONE: z.string().default('America/Bogota'),
+  EXPO_PUSH_URL: z.string().default('https://exp.host/--/api/v2/push/send'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
   EXPOSE_DEV_CODES: z
     .string()
     .default('true')
@@ -32,3 +38,13 @@ if (!parsed.success) {
 }
 
 export const config = parsed.data;
+
+if (config.NODE_ENV === 'production') {
+  if (config.JWT_SECRET === 'dev-only-secret-change-me-please-32') {
+    console.error('JWT_SECRET inseguro en producción. Configura uno propio.');
+    process.exit(1);
+  }
+  if (config.CORS_ORIGIN === '*') {
+    console.warn('[config] CORS abierto en producción; restringe CORS_ORIGIN.');
+  }
+}

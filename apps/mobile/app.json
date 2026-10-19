@@ -34,6 +34,7 @@
           "photosPermission": "Permite seleccionar imágenes para el comprobante de pago y el chat."
         }
       ],
+      "expo-notifications",
       [
         "expo-splash-screen",
         {

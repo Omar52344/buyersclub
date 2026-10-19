@@ -35,7 +35,10 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.post<{ Params: { id: string } }>('/conversations/:id/messages', async (request, reply) => {
+  app.post<{ Params: { id: string } }>(
+    '/conversations/:id/messages',
+    { config: { rateLimit: { max: 120, timeWindow: '1 hour' } } },
+    async (request, reply) => {
     const userId = await requireUserId(request);
     const body = messageSchema.parse(request.body);
     return reply.status(201).send({

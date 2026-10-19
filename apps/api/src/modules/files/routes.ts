@@ -10,7 +10,10 @@ import {
 } from './service';
 
 export const fileRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/files', async (request, reply) => {
+  app.post(
+    '/files',
+    { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } },
+    async (request, reply) => {
     const userId = await requireUserId(request);
     const data = await request.file();
     if (!data) {
@@ -38,7 +41,7 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
       return reply
         .type(file.mime)
         .header('Cache-Control', 'private, max-age=300')
-        .send(fileStream(file.key));
+        .send(await fileStream(file.key));
     },
   );
 };

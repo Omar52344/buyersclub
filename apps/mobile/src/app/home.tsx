@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { loadCurrentUser, signOut, type PublicUser } from '../lib/auth';
 import { useCart } from '../lib/cart';
+import { registerForPush } from '../lib/push';
 import { colors, radius, spacing } from '../theme';
 
 export default function HomeScreen() {
@@ -25,6 +26,7 @@ export default function HomeScreen() {
       .then((current) => {
         if (active) {
           setUser(current);
+          void registerForPush().catch(() => undefined);
         }
       })
       .catch(() => {
@@ -140,6 +142,15 @@ export default function HomeScreen() {
             <Text style={styles.quickText}>{itemCount} ítems</Text>
           </Pressable>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/notifications')}
+          style={styles.quickCardWide}
+        >
+          <Text style={styles.quickTitle}>Notificaciones</Text>
+          <Text style={styles.quickText}>Pedidos, pagos y mensajes</Text>
+        </Pressable>
 
         <Pressable
           accessibilityRole="button"

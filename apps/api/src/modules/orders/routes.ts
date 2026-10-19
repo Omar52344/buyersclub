@@ -19,7 +19,10 @@ import {
 const statusQuerySchema = z.enum(ORDER_STATUSES).optional();
 
 export const orderRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/orders', async (request, reply) => {
+  app.post(
+    '/orders',
+    { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } },
+    async (request, reply) => {
     const userId = await requireUserId(request);
     const body = orderCreateSchema.parse(request.body);
     return reply.status(201).send({ order: await createOrder(userId, body) });

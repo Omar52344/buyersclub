@@ -1,6 +1,8 @@
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
+import websocket from '@fastify/websocket';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { AppError } from './errors';
@@ -12,8 +14,10 @@ import { catalogRoutes } from './modules/catalog/routes';
 import { chatRoutes } from './modules/chat/routes';
 import { discoveryRoutes } from './modules/discovery/routes';
 import { fileRoutes } from './modules/files/routes';
+import { notificationRoutes } from './modules/notifications/routes';
 import { orderRoutes } from './modules/orders/routes';
 import { paymentRoutes } from './modules/payments/routes';
+import { realtimeRoutes } from './modules/realtime/routes';
 import { healthRoutes } from './routes/health';
 import { metaRoutes } from './routes/meta';
 
@@ -30,11 +34,19 @@ export async function buildApp(): Promise<FastifyInstance> {
             : {}),
         },
     trustProxy: true,
+    bodyLimit: 1024 * 1024,
+  });
+
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
 
   await app.register(cors, {
     origin: config.CORS_ORIGIN === '*' ? true : config.CORS_ORIGIN.split(','),
   });
+
+  await app.register(websocket);
 
   await app.register(rateLimit, {
     max: 300,
@@ -87,6 +99,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(orderRoutes, { prefix: '/v1' });
   await app.register(paymentRoutes, { prefix: '/v1' });
   await app.register(chatRoutes, { prefix: '/v1' });
+  await app.register(notificationRoutes, { prefix: '/v1' });
+  await app.register(realtimeRoutes, { prefix: '/v1' });
   await app.register(fileRoutes, { prefix: '/v1' });
   await app.register(metaRoutes, { prefix: '/v1' });
 

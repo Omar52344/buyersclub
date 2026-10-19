@@ -21,6 +21,21 @@ import {
 import { AppError } from '../../errors';
 import { assertBusinessOwner } from '../businesses/service';
 import { buildFileUrl } from '../../lib/file-token';
+import { notifyUser } from '../notifications/service';
+import { publishToUser } from '../../lib/realtime';
+import { recordAudit } from '../../lib/audit';
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Recibido',
+  awaiting_payment: 'Esperando pago',
+  accepted: 'Aceptado',
+  preparing: 'Preparando',
+  ready: 'Listo para recoger',
+  out_for_delivery: 'En camino',
+  completed: 'Entregado',
+  cancelled: 'Cancelado',
+  rejected: 'Rechazado',
+};
 
 type Viewer = 'buyer' | 'vendor';
 
@@ -235,6 +250,7 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
       timeZone: branches.timezone,
       currency: businesses.currency,
       businessStatus: businesses.status,
+      businessOwnerUserId: businesses.ownerUserId,
     })
     .from(branches)
     .innerJoin(businesses, eq(branches.businessId, businesses.id))
@@ -506,6 +522,26 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
     return order.id;
   });
 
+  void notifyUser(branch.businessOwnerUserId, {
+    type: 'order.new',
+    title: 'Nuevo pedido',
+    body: `${code} · ${input.fulfillment === 'delivery' ? 'Domicilio' : 'Recogida'} · ${totalCents / 100} ${branch.currency}`,
+    data: { orderId, deeplink: '/vendor-orders' },
+  });
+  publishToUser(branch.businessOwnerUserId, {
+    type: 'order.created',
+    orderId,
+    code,
+  });
+  await recordAudit({
+    actorUserId: buyerUserId,
+    businessId: branch.businessId,
+    action: 'order.create',
+    entityType: 'order',
+    entityId: orderId,
+    metadata: { totalCents, fulfillment: input.fulfillment },
+  });
+
   return getOrderDetail(buyerUserId, orderId);
 }
 
@@ -678,7 +714,27 @@ export async function updateOrderStatus(
     });
   });
 
-  return getOrderDetail(userId, orderId);
+  const detail = await getOrderDetail(userId, orderId);
+  void notifyUser(row.buyerUserId, {
+    type: 'order.status',
+    title: `Pedido ${row.code}: ${STATUS_LABELS[status] ?? status}`,
+    body: 'Tu pedido cambió de estado.',
+    data: { orderId, deeplink: `/order?id=${orderId}` },
+  });
+  publishToUser(row.buyerUserId, {
+    type: 'order.status_changed',
+    orderId,
+    status,
+  });
+  await recordAudit({
+    actorUserId: userId,
+    businessId: row.businessId,
+    action: 'order.status',
+    entityType: 'order',
+    entityId: orderId,
+    metadata: { from: row.status, to: status },
+  });
+  return detail;
 }
 
 export async function cancelOrder(userId: string, orderId: string, reason: string) {
@@ -713,5 +769,25 @@ export async function cancelOrder(userId: string, orderId: string, reason: strin
     });
   });
 
-  return getOrderDetail(userId, orderId);
+  const detail = await getOrderDetail(userId, orderId);
+  void notifyUser(row.businessOwnerUserId, {
+    type: 'order.cancelled',
+    title: `Pedido ${row.code} cancelado`,
+    body: reason,
+    data: { orderId, deeplink: '/vendor-orders' },
+  });
+  publishToUser(row.businessOwnerUserId, {
+    type: 'order.status_changed',
+    orderId,
+    status: 'cancelled',
+  });
+  await recordAudit({
+    actorUserId: userId,
+    businessId: row.businessId,
+    action: 'order.cancel',
+    entityType: 'order',
+    entityId: orderId,
+    metadata: { reason },
+  });
+  return detail;
 }

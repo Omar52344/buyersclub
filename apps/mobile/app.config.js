@@ -11,6 +11,7 @@ const base = require('./app.json').expo;
 module.exports = ({ config }) => {
   const merged = { ...base, ...config };
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const easProjectId = process.env.EAS_PROJECT_ID;
 
   const androidConfig = { ...(merged.android?.config ?? {}) };
   if (apiKey) {
@@ -26,5 +27,9 @@ module.exports = ({ config }) => {
     ...merged,
     android: { ...merged.android, config: androidConfig },
     ios: { ...merged.ios, config: iosConfig },
+    extra: {
+      ...(merged.extra ?? {}),
+      ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
+    },
   };
 };

@@ -1,9 +1,17 @@
 import { createReadStream, existsSync } from 'node:fs';
+import type { Readable } from 'node:stream';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { and, eq, or } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
+import {
+  CreateBucketCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { db } from '../../db/index';
 import {
   businesses,
@@ -20,6 +28,44 @@ const uploadRoot = path.resolve(process.cwd(), config.UPLOAD_DIR);
 const key = new TextEncoder().encode(config.JWT_SECRET);
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_BYTES = 10 * 1024 * 1024;
+
+let s3Client: S3Client | null | undefined;
+let bucketReady = false;
+
+function getS3(): S3Client | null {
+  if (
+    !config.S3_ENDPOINT ||
+    !config.S3_BUCKET ||
+    !config.S3_ACCESS_KEY_ID ||
+    !config.S3_SECRET_ACCESS_KEY
+  ) {
+    return null;
+  }
+  if (s3Client === undefined) {
+    s3Client = new S3Client({
+      region: config.S3_REGION,
+      endpoint: config.S3_ENDPOINT,
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: config.S3_ACCESS_KEY_ID,
+        secretAccessKey: config.S3_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return s3Client;
+}
+
+async function ensureBucket(client: S3Client): Promise<void> {
+  if (bucketReady || !config.S3_BUCKET) {
+    return;
+  }
+  try {
+    await client.send(new HeadBucketCommand({ Bucket: config.S3_BUCKET }));
+  } catch {
+    await client.send(new CreateBucketCommand({ Bucket: config.S3_BUCKET }));
+  }
+  bucketReady = true;
+}
 
 export function uploadPath(): string {
   return uploadRoot;
@@ -41,11 +87,25 @@ export async function saveUpload(input: {
     throw new AppError('FILE_TOO_LARGE', 'La imagen debe pesar menos de 10 MB.', 422);
   }
 
-  await mkdir(uploadRoot, { recursive: true });
   const extension =
     input.mime === 'image/png' ? 'png' : input.mime === 'image/webp' ? 'webp' : 'jpg';
   const keyName = `${randomUUID()}.${extension}`;
-  await writeFile(path.join(uploadRoot, keyName), input.buffer);
+
+  const client = getS3();
+  if (client) {
+    await ensureBucket(client);
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.S3_BUCKET,
+        Key: keyName,
+        Body: input.buffer,
+        ContentType: input.mime,
+      }),
+    );
+  } else {
+    await mkdir(uploadRoot, { recursive: true });
+    await writeFile(path.join(uploadRoot, keyName), input.buffer);
+  }
 
   const [file] = await db
     .insert(files)
@@ -132,7 +192,15 @@ export async function authorizeFileToken(fileId: string, token: string) {
   return authorizeFile(fileId, userId);
 }
 
-export function fileStream(fileKey: string) {
+export async function fileStream(fileKey: string): Promise<Readable> {
+  const client = getS3();
+  if (client) {
+    const response = await client.send(
+      new GetObjectCommand({ Bucket: config.S3_BUCKET, Key: fileKey }),
+    );
+    return response.Body as unknown as Readable;
+  }
+
   const filePath = path.join(uploadRoot, fileKey);
   if (!existsSync(filePath)) {
     throw new AppError('FILE_NOT_FOUND', 'La imagen no existe en el servidor.', 404);

@@ -157,19 +157,20 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 5 App: chat por pedido, envío de imágenes y comprobante con validación | ✅ En el build web |
 | Fase 6 API: analítica de ventas y compras con filtros de fecha | ✅ Probada con datos reales |
 | Fase 6 App: dashboard del vendedor y "Mis indicadores" del comprador | ✅ En el build web |
-| Notificaciones push, WebSocket, S3 y endurecimiento | ⏳ Fase 7 |
+| Fase 7 API: notificaciones in-app/push, WebSocket, S3 opcional y auditoría | ✅ Probado |
+| Fase 7 App: bandeja de notificaciones, push y chat en tiempo real | ✅ (push requiere dev build/EAS) |
+| Beta y release a tiendas | ⏳ Fase 8 |
 
 ## 9. Próximo paso
 
-La **Fase 6 quedó completa**: dashboard del vendedor con ventas, ticket promedio,
-comparación contra el periodo anterior, desglose por sucursal, serie temporal,
-top productos y embudo; e indicadores del comprador con gasto por moneda, pedidos
-activos y comercios frecuentes. Todo con filtros de 7/30/90 días y zona horaria.
+La **Fase 7 quedó completa**: notificaciones in-app y push con Expo, WebSocket
+autenticado para el chat, almacenamiento S3/R2 opcional (probado con Moto),
+auditoría de acciones sensibles, Helmet, límites por ruta y limpieza periódica de
+OTP/tokens.
 
-> El chat usa *polling* cada 4 segundos en esta fase; el WebSocket y las
-> notificaciones push quedan para F7. Las imágenes se guardan en `.uploads`
-> (disco local, ignorado por git) en desarrollo; el cambio a S3/R2 es parte del
-> endurecimiento previo a producción.
+> El chat mantiene *polling* de respaldo cada 15 s y recibe eventos inmediatos
+> por WebSocket. Las imágenes usan `.uploads` por defecto y S3/R2 si defines
+> `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` y `S3_SECRET_ACCESS_KEY`.
 
 ### Google Maps: configuración y seguridad
 
@@ -184,5 +185,14 @@ activos y comercios frecuentes. Todo con filtros de 7/30/90 días y zona horaria
   (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
 
-Sigue la **Fase 7 — Notificaciones y endurecimiento**: push con Expo, WebSocket
-para el chat, almacenamiento S3/R2 y revisión de seguridad previa a la beta.
+### Push y archivos
+
+- `apps/mobile/.env` → `EAS_PROJECT_ID` (lo genera `eas init`) para obtener el
+  token de Expo. El push remoto necesita un **development build** o EAS; Expo Go
+  ya no lo soporta en Android desde SDK 53.
+- `apps/api/.env` → variables `S3_*` para usar R2/S3; sin ellas se guarda en
+  `apps/api/.uploads`.
+- La bandeja in-app funciona siempre; el push es el canal de aviso.
+
+Sigue la **Fase 8 — Beta y release**: builds con EAS, TestFlight/Play Internal,
+zona piloto, términos y privacidad, y checklist de tiendas.

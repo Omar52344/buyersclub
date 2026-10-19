@@ -1,8 +1,8 @@
 # 06 — Roadmap y estimación
 
-> **Estado de implementación:** F1 ✅, F2 ✅, F3 ✅, F4 ✅, F5 ✅ y F6 ✅
-> (autenticación, empresa, sucursales, catálogo, descubrimiento PostGIS, mapa,
-> carrito, pedidos, tracker, chat, pagos y dashboards). F7 siguiente.
+> **Estado de implementación:** F1 ✅, F2 ✅, F3 ✅, F4 ✅, F5 ✅, F6 ✅ y F7 ✅
+> (autenticación, empresa, sucursales, catálogo, descubrimiento, mapa, carrito,
+> pedidos, chat, pagos, dashboards, push y WebSocket). F8 siguiente.
 
 ## 1. Supuestos de estimación
 
