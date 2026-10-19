@@ -141,6 +141,26 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/my-dashboard')}
+          style={styles.quickCardWide}
+        >
+          <Text style={styles.quickTitle}>Mis indicadores</Text>
+          <Text style={styles.quickText}>Gasto, pedidos completados y comercios frecuentes</Text>
+        </Pressable>
+
+        {isVendor ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/vendor-dashboard')}
+            style={styles.quickCardWide}
+          >
+            <Text style={styles.quickTitle}>Dashboard de ventas</Text>
+            <Text style={styles.quickText}>Consolidado por sucursal y filtros de fecha</Text>
+          </Pressable>
+        ) : null}
+
         {isVendor ? (
           <Pressable
             accessibilityRole="button"
@@ -317,6 +337,14 @@ const styles = StyleSheet.create({
   },
   quickTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   quickText: { color: colors.muted, fontSize: 12 },
+  quickCardWide: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: 2,
+  },
   vendorCtaPressed: { backgroundColor: colors.brandDark },
   vendorCtaText: { flex: 1, gap: 2 },
   vendorCtaTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },

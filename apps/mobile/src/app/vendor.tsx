@@ -340,6 +340,12 @@ export default function VendorScreen() {
           <View style={styles.topActions}>
             <Pressable
               accessibilityRole="button"
+              onPress={() => router.push('/vendor-dashboard')}
+            >
+              <Text style={styles.link}>Dashboard</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
               onPress={() => router.push('/vendor-orders')}
             >
               <Text style={styles.link}>Pedidos</Text>

@@ -262,36 +262,43 @@ Push (servidor → Expo): se envía un job por evento con `title`, `body`,
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/analytics/vendor/summary` | Totales del periodo. `?from&to&branchId?` |
-| GET | `/analytics/vendor/timeseries` | Serie por día/semana/mes. `?granularity` |
-| GET | `/analytics/vendor/branches` | Comparativo por sucursal |
-| GET | `/analytics/vendor/top-products` | Más vendidos del periodo |
-| GET | `/analytics/vendor/funnel` | Conteo por estado |
-| GET | `/analytics/buyer/summary` | Gasto, pedidos, ticket promedio |
-| GET | `/analytics/buyer/timeseries` | Compras por periodo |
-| GET | `/analytics/buyer/frequent` | Comercios frecuentes |
+| GET | `/analytics/vendor` | `?businessId=&from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day\|week\|month`. Resumen, comparación con el periodo anterior, por sucursal, serie, top productos y embudo |
+| GET | `/analytics/buyer` | `?from&to&granularity`. Totales por moneda, pedidos activos, serie y comercios frecuentes |
 
-Respuesta de `vendor/summary`:
+Solo cuentan como ventas/gasto los pedidos `completed`. Las fechas se
+interpretan en la zona horaria de la primera sucursal (vendedor) o
+`America/Bogota` (comprador); `from` y `to` son inclusivos.
+
+Respuesta de `/analytics/vendor`:
 ```json
 {
-  "range": { "from": "2026-01-01", "to": "2026-01-31" },
-  "revenueCents": 128400000,
-  "ordersCompleted": 87,
-  "ordersCancelled": 4,
-  "avgTicketCents": 1475800,
-  "activeBranches": 3,
-  "topBranch": { "id": "…", "name": "Sede Chapinero", "revenueCents": 70200000 },
-  "comparison": { "revenuePct": 12.4, "ordersPct": 8.1 }
+  "range": { "from": "2026-01-01", "to": "2026-01-31", "granularity": "day" },
+  "summary": {
+    "revenueCents": 128400000,
+    "ordersCompleted": 87,
+    "ordersCreated": 95,
+    "ordersCancelled": 4,
+    "avgTicketCents": 1475800
+  },
+  "comparison": {
+    "revenuePct": 12.4,
+    "ordersPct": 8.1,
+    "previous": { "revenueCents": 114200000, "ordersCompleted": 80 }
+  },
+  "byBranch": [
+    { "branchId": "…", "branchName": "Sede Chapinero", "revenueCents": 70200000, "ordersCompleted": 48 }
+  ],
+  "timeseries": [{ "bucket": "2026-01-01", "revenueCents": 4200000, "orders": 3 }],
+  "topProducts": [
+    { "productId": "…", "name": "Pan campesino", "qty": 120, "revenueCents": 54000000 }
+  ],
+  "funnel": [{ "status": "completed", "count": 87 }]
 }
 ```
 
-Fechas interpretadas en la zona horaria de la empresa; `from`/`to` inclusivos
-por día.
-
-Todos los montos del dashboard del vendedor se expresan en la moneda de su
-empresa. El dashboard del comprador devuelve los totales **agrupados por
-moneda** (`totalsByCurrency: [{ currency, spentCents, orders }]`) cuando compró
-en negocios con COP y USD; no se aplican tasas de cambio.
+`revenuePct` y `ordersPct` son `null` cuando no hay periodo anterior comparable.
+`/analytics/buyer` devuelve `totalsByCurrency`, `ordersCreated`, `activeOrders`,
+`timeseries` por moneda y `frequent`; no convierte entre monedas.
 
 ## 10. Archivos
 

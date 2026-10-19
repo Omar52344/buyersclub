@@ -17,6 +17,7 @@ const envSchema = z.object({
   MAIL_FROM: z.string().default('BuyersClub <no-reply@buyersclub.local>'),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   UPLOAD_DIR: z.string().default('.uploads'),
+  DEFAULT_TIMEZONE: z.string().default('America/Bogota'),
   EXPOSE_DEV_CODES: z
     .string()
     .default('true')

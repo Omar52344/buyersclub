@@ -155,13 +155,16 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 4 App: carrito, checkout, mis pedidos, detalle y pedidos del vendedor | ✅ En el build web |
 | Fase 5 API: archivos privados, comprobante, validación y chat con imágenes | ✅ Probada de punta a punta |
 | Fase 5 App: chat por pedido, envío de imágenes y comprobante con validación | ✅ En el build web |
-| Notificaciones push, dashboards y endurecimiento | ⏳ Fases 6–7 |
+| Fase 6 API: analítica de ventas y compras con filtros de fecha | ✅ Probada con datos reales |
+| Fase 6 App: dashboard del vendedor y "Mis indicadores" del comprador | ✅ En el build web |
+| Notificaciones push, WebSocket, S3 y endurecimiento | ⏳ Fase 7 |
 
 ## 9. Próximo paso
 
-La **Fase 5 quedó completa**: chat por pedido con texto e imágenes, comprobante
-de pago privado con enlace firmado, validación o rechazo por el vendedor (al
-validar, el pedido pasa a `accepted`) y reenvío tras un rechazo.
+La **Fase 6 quedó completa**: dashboard del vendedor con ventas, ticket promedio,
+comparación contra el periodo anterior, desglose por sucursal, serie temporal,
+top productos y embudo; e indicadores del comprador con gasto por moneda, pedidos
+activos y comercios frecuentes. Todo con filtros de 7/30/90 días y zona horaria.
 
 > El chat usa *polling* cada 4 segundos en esta fase; el WebSocket y las
 > notificaciones push quedan para F7. Las imágenes se guardan en `.uploads`
@@ -181,5 +184,5 @@ validar, el pedido pasa a `accepted`) y reenvío tras un rechazo.
   (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
 
-Sigue la **Fase 6 — Dashboards**: consolidado de ventas por sucursal con filtros
-de fecha para el vendedor, e indicadores de compras para el comprador.
+Sigue la **Fase 7 — Notificaciones y endurecimiento**: push con Expo, WebSocket
+para el chat, almacenamiento S3/R2 y revisión de seguridad previa a la beta.
