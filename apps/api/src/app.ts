@@ -8,6 +8,7 @@ import { authRoutes } from './modules/auth/routes';
 import { businessRoutes } from './modules/businesses/routes';
 import { catalogRoutes } from './modules/catalog/routes';
 import { discoveryRoutes } from './modules/discovery/routes';
+import { orderRoutes } from './modules/orders/routes';
 import { healthRoutes } from './routes/health';
 import { metaRoutes } from './routes/meta';
 
@@ -73,6 +74,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(businessRoutes, { prefix: '/v1' });
   await app.register(catalogRoutes, { prefix: '/v1' });
   await app.register(discoveryRoutes, { prefix: '/v1' });
+  await app.register(orderRoutes, { prefix: '/v1' });
   await app.register(metaRoutes, { prefix: '/v1' });
 
   return app;

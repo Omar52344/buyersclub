@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BranchMap } from '../components/branch-map';
 import { ApiError } from '../lib/api';
+import { useCart } from '../lib/cart';
 import { getPublicBranch, type CurrencyCode, type PublicBranch } from '../lib/discovery';
 import { colors, radius, spacing } from '../theme';
 
@@ -27,6 +28,7 @@ export default function StoreScreen() {
   const id = typeof params.id === 'string' ? params.id : null;
 
   const [branch, setBranch] = useState<PublicBranch | null>(null);
+  const { cart, itemCount, subtotalCents, addItem } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -203,23 +205,65 @@ export default function StoreScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.productPrice}>
-                {money(product.priceCents, product.currency)}
-              </Text>
+              <View style={styles.productActions}>
+                <Text style={styles.productPrice}>
+                  {money(product.priceCents, product.currency)}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={!branch.isOpen}
+                  onPress={() =>
+                    addItem(
+                      {
+                        branchId: branch.id,
+                        branchName: branch.name,
+                        businessName: branch.business.name,
+                        currency: branch.business.currency,
+                        fulfillment: branch.fulfillment,
+                        deliveryFeeCents: branch.deliveryFee.amountCents,
+                        minOrderCents: branch.minOrder.amountCents,
+                      },
+                      {
+                        productId: product.id,
+                        name: product.name,
+                        unitPriceCents: product.priceCents,
+                        qty: 1,
+                      },
+                    )
+                  }
+                  style={[styles.addButton, !branch.isOpen && styles.addButtonDisabled]}
+                >
+                  <Text style={styles.addButtonText}>
+                    {branch.isOpen ? 'Agregar' : 'Cerrada'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           ))
         )}
 
-        <Pressable
-          accessibilityRole="button"
-          disabled
-          style={styles.orderButtonDisabled}
-        >
-          <Text style={styles.orderButtonText}>Hacer pedido · Fase 4</Text>
-        </Pressable>
-        <Text style={styles.footnote}>
-          El carrito, el checkout y el seguimiento del pedido llegan en la siguiente fase.
-        </Text>
+        {itemCount > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/cart')}
+            style={styles.cartBar}
+          >
+            <View>
+              <Text style={styles.cartBarText}>
+                {itemCount} ítems ·{' '}
+                {money(subtotalCents, cart?.currency ?? branch.business.currency)}
+              </Text>
+              {cart && cart.branchId !== branch.id ? (
+                <Text style={styles.cartBarHint}>Carrito de {cart.branchName}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.cartBarAction}>Ver carrito →</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.footnote}>
+            Agrega productos para iniciar un pedido a domicilio o para recoger.
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -308,6 +352,27 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   productText: { flex: 1, gap: 2 },
+  productActions: { alignItems: 'flex-end', gap: 6 },
+  addButton: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  addButtonDisabled: { backgroundColor: colors.border },
+  addButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  cartBar: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  cartBarText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  cartBarHint: { color: '#D1FAE5', fontSize: 11, marginTop: 2 },
+  cartBarAction: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   productName: { fontSize: 14, fontWeight: '700', color: colors.text },
   productPrice: { fontSize: 14, fontWeight: '800', color: colors.text },
   orderButtonDisabled: {

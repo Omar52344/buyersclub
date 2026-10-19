@@ -151,14 +151,17 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 3 API: PostGIS, radio, filtros y abierto/cerrado en servidor | ✅ Probada con datos reales |
 | Fase 3 App: explorar tiendas y ficha pública con catálogo | ✅ En el build web |
 | Mapa visual: Maps JS en web y `react-native-maps` en nativo | ✅ Configurado (keys en `.env`) |
-| Pedidos, chat, pagos y dashboards | ⏳ Fases 4–6 |
+| Fase 4 API: pedidos, totales en servidor, estados, tracker y cancelación | ✅ Probada de punta a punta |
+| Fase 4 App: carrito, checkout, mis pedidos, detalle y pedidos del vendedor | ✅ En el build web |
+| Chat, evidencia de pago, notificaciones y dashboards | ⏳ Fases 5–6 |
 
 ## 9. Próximo paso
 
-La **Fase 3 quedó completa**: PostGIS con índice GiST, búsqueda por radio,
-filtros, distancia, estado abierto/cerrado calculado en el servidor (interruptor
-manual + horario + excepciones + zona horaria), ficha pública, catálogo y mapa
-visual en web y nativo.
+La **Fase 4 quedó completa**: carrito persistente, checkout con domicilio o
+recogida, dirección, medios de pago, recálculo de precios y totales en el
+servidor, validación de sucursal abierta y pedido mínimo, máquina de estados,
+tracker con historial, cancelación del comprador y avance de estados desde la
+pantalla de pedidos del vendedor.
 
 ### Google Maps: configuración y seguridad
 
@@ -173,5 +176,5 @@ visual en web y nativo.
   (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
 
-Sigue la **Fase 4 — Pedidos**: carrito, checkout (domicilio/recogida), máquina
-de estados y tracker.
+Sigue la **Fase 5 — Chat y pago**: mensajes por pedido, imágenes, comprobante de
+pago y validación del vendedor.

@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { loadCurrentUser, signOut, type PublicUser } from '../lib/auth';
+import { useCart } from '../lib/cart';
 import { colors, radius, spacing } from '../theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { itemCount } = useCart();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -119,6 +121,25 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.exploreArrow}>→</Text>
         </Pressable>
+
+        <View style={styles.quickRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/orders')}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickTitle}>Mis pedidos</Text>
+            <Text style={styles.quickText}>Estado y seguimiento</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/cart')}
+            style={styles.quickCard}
+          >
+            <Text style={styles.quickTitle}>Carrito</Text>
+            <Text style={styles.quickText}>{itemCount} ítems</Text>
+          </Pressable>
+        </View>
 
         {isVendor ? (
           <Pressable
@@ -284,6 +305,18 @@ const styles = StyleSheet.create({
   exploreTitle: { color: colors.brandDark, fontSize: 17, fontWeight: '800' },
   exploreSubtitle: { color: colors.brandDark, fontSize: 13, opacity: 0.85 },
   exploreArrow: { color: colors.brandDark, fontSize: 22, fontWeight: '700' },
+  quickRow: { flexDirection: 'row', gap: spacing.md },
+  quickCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: 2,
+  },
+  quickTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
+  quickText: { color: colors.muted, fontSize: 12 },
   vendorCtaPressed: { backgroundColor: colors.brandDark },
   vendorCtaText: { flex: 1, gap: 2 },
   vendorCtaTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },

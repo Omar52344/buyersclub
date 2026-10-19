@@ -173,43 +173,53 @@ compartidos.
 
 | Método | Ruta | Actor | Descripción |
 |---|---|---|---|
-| POST | `/orders` | comprador | Crea pedido (idempotente) |
-| GET | `/orders` | comprador | Sus pedidos, `?status=&cursor=` |
-| GET | `/orders/:id` | ambos | Detalle + items + pagos + ETA |
-| GET | `/orders/:id/events` | ambos | Timeline de estados |
+| POST | `/orders` | comprador | Crea pedido; recalcula precios y valida sucursal abierta, mínimo y stock |
+| GET | `/orders` | comprador | Sus pedidos con estado, total e ítems |
+| GET | `/orders/:id` | ambos | Detalle + ítems + historial + ETA |
 | POST | `/orders/:id/cancel` | comprador | Solo en `pending`/`awaiting_payment` |
 | POST | `/orders/:id/status` | vendedor | Transición validada |
-| POST | `/orders/:id/payment-evidence` | comprador | `{fileId, note?}` |
-| POST | `/payments/:id/validate` | vendedor | Marca pago validado |
-| POST | `/payments/:id/reject` | vendedor | `{reason}` |
+| GET | `/businesses/:id/orders` | vendedor | Pedidos de la empresa, `?status=` |
+| POST | `/orders/:id/payment-evidence` | comprador | *(Fase 5)* `{fileId, note?}` |
+| POST | `/payments/:id/validate` | vendedor | *(Fase 5)* Marca pago validado |
+| POST | `/payments/:id/reject` | vendedor | *(Fase 5)* `{reason}` |
 
 `POST /orders`:
 ```json
 {
   "branchId": "…",
   "fulfillment": "delivery",
-  "paymentMethod": "transfer",
+  "paymentMethod": "cash",
   "items": [{ "productId": "…", "qty": 2, "notes": "sin azúcar" }],
-  "addressId": "…",
-  "notes": "Timbre 2B",
-  "clientTotalCents": 2450000
+  "deliveryAddress": {
+    "line1": "Calle 70 # 10-20",
+    "city": "Bogotá",
+    "recipientName": "Ana",
+    "phone": "+573001234567",
+    "notes": "Timbre 2B"
+  },
+  "notes": "Entregar antes de las 6",
+  "clientTotalCents": 1300000
 }
 ```
 
 El servidor **recalcula** precios y totales (nunca confía en el cliente); si
-`clientTotalCents` no coincide, responde `409 PRICE_CHANGED` con el carrito
-actualizado. Los precios aplicados son los de `branch_products` (o el base).
-La moneda del pedido se toma de la empresa; si el cliente envía otra, se
-responde `422 CURRENCY_MISMATCH`.
+`clientTotalCents` no coincide, responde `409 PRICE_CHANGED` con el desglose. Los
+precios aplicados son los de `branch_products` (o el base). La moneda sale de la
+empresa. El pedido se rechaza si la sucursal está cerrada (`409 BRANCH_CLOSED`),
+no ofrece el medio elegido (`422`), no alcanza el mínimo (`422 MIN_ORDER_NOT_MET`)
+o un producto no está disponible (`422 PRODUCT_UNAVAILABLE`).
+
+Con `paymentMethod = transfer` el pedido nace en `awaiting_payment`; el vendedor
+no puede aceptarlo hasta validar la evidencia (Fase 5).
 
 Transiciones permitidas (`POST /orders/:id/status`):
 
 | Desde | Hacia | Quién |
 |---|---|---|
 | `pending` | `accepted`, `rejected`, `cancelled` | vendedor (accepted/rejected) / comprador (cancelled) |
-| `awaiting_payment` | `accepted` (solo si pago validado), `cancelled` | sistema / comprador |
-| `accepted` | `preparing` | vendedor |
-| `preparing` | `ready`, `out_for_delivery` | vendedor |
+| `awaiting_payment` | `accepted` (solo si pago validado), `cancelled` | vendedor / comprador |
+| `accepted` | `preparing`, `rejected` | vendedor |
+| `preparing` | `ready`, `out_for_delivery`, `rejected` | vendedor |
 | `ready` | `completed` | vendedor |
 | `out_for_delivery` | `completed` | vendedor |
 

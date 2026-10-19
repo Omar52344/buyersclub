@@ -337,17 +337,25 @@ export default function VendorScreen() {
             <Text style={styles.back}>←</Text>
           </Pressable>
           <Text style={styles.topTitle}>Mi negocio</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setBusy(true);
-              reload()
-                .catch((caught) => setError(messageOf(caught)))
-                .finally(() => setBusy(false));
-            }}
-          >
-            <Text style={styles.refresh}>Actualizar</Text>
-          </Pressable>
+          <View style={styles.topActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/vendor-orders')}
+            >
+              <Text style={styles.link}>Pedidos</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setBusy(true);
+                reload()
+                  .catch((caught) => setError(messageOf(caught)))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <Text style={styles.refresh}>Actualizar</Text>
+            </Pressable>
+          </View>
         </View>
 
         {info ? (
@@ -799,6 +807,7 @@ const styles = StyleSheet.create({
   topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 22, color: colors.brand, fontWeight: '700' },
   topTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   refresh: { color: colors.brand, fontWeight: '600', fontSize: 13 },
   card: {
     backgroundColor: colors.surface,

@@ -1,8 +1,8 @@
 # 06 — Roadmap y estimación
 
-> **Estado de implementación:** F1 ✅, F2 ✅ y F3 ✅ (autenticación, empresa,
-> sucursales, catálogo, descubrimiento PostGIS, estado abierto/cerrado y mapa
-> web/nativo con Google Maps). F4 siguiente.
+> **Estado de implementación:** F1 ✅, F2 ✅, F3 ✅ y F4 ✅ (autenticación,
+> empresa, sucursales, catálogo, descubrimiento PostGIS, mapa, carrito, pedidos y
+> tracker). F5 siguiente.
 
 ## 1. Supuestos de estimación
 

@@ -196,14 +196,51 @@ export const orderItemSchema = z.object({
   notes: z.string().max(200).optional(),
 });
 
-export const orderCreateSchema = z.object({
-  branchId: z.string().uuid(),
-  fulfillment: z.enum(['delivery', 'pickup']),
-  paymentMethod: z.enum(['cash', 'transfer', 'card_terminal', 'other']),
-  items: z.array(orderItemSchema).min(1).max(50),
-  addressId: z.string().uuid().optional(),
-  notes: z.string().max(500).optional(),
-  clientTotalCents: z.number().int().nonnegative().optional(),
+export const deliveryAddressSchema = z.object({
+  line1: z.string().min(5).max(200),
+  line2: z.string().max(120).optional(),
+  city: z.string().min(2).max(80),
+  recipientName: z.string().min(2).max(120).optional(),
+  phone: z.string().max(30).optional(),
+  notes: z.string().max(200).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+});
+
+export const orderCreateSchema = z
+  .object({
+    branchId: z.string().uuid(),
+    fulfillment: z.enum(['delivery', 'pickup']),
+    paymentMethod: z.enum(['cash', 'transfer', 'card_terminal', 'other']),
+    items: z.array(orderItemSchema).min(1).max(50),
+    addressId: z.string().uuid().optional(),
+    deliveryAddress: deliveryAddressSchema.optional(),
+    notes: z.string().max(500).optional(),
+    clientTotalCents: z.number().int().nonnegative().optional(),
+  })
+  .refine(
+    (value) =>
+      value.fulfillment !== 'delivery' || Boolean(value.deliveryAddress || value.addressId),
+    {
+      message: 'La entrega a domicilio requiere una dirección',
+      path: ['deliveryAddress'],
+    },
+  );
+
+export const orderStatusUpdateSchema = z.object({
+  status: z.enum([
+    'accepted',
+    'preparing',
+    'ready',
+    'out_for_delivery',
+    'completed',
+    'rejected',
+  ]),
+  note: z.string().max(200).optional(),
+});
+
+export const orderCancelSchema = z.object({
+  reason: z.string().min(3).max(200),
 });
 
 export const paymentEvidenceSchema = z.object({
@@ -233,4 +270,7 @@ export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 export type ProductBranchesUpdateInput = z.infer<typeof productBranchesUpdateSchema>;
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
+export type OrderStatusUpdateInput = z.infer<typeof orderStatusUpdateSchema>;
+export type OrderCancelInput = z.infer<typeof orderCancelSchema>;
+export type DeliveryAddressInput = z.infer<typeof deliveryAddressSchema>;
 export type PaymentEvidenceInput = z.infer<typeof paymentEvidenceSchema>;
