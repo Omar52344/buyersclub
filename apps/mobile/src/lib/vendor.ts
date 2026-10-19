@@ -175,3 +175,37 @@ export async function createProduct(input: {
   });
   return response.product;
 }
+
+export async function setProductBranches(
+  productId: string,
+  branches: {
+    branchId: string;
+    priceCents?: number | null;
+    stock?: number | null;
+    isAvailable: boolean;
+  }[],
+): Promise<Product[]> {
+  const response = await authedRequest<{ products: Product[] }>(
+    `/v1/products/${productId}/branches`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ branches }),
+    },
+  );
+  return response.products;
+}
+
+export async function bulkSetBranchProducts(
+  branchId: string,
+  productIds: string[],
+  isAvailable: boolean,
+): Promise<number> {
+  const response = await authedRequest<{ updated: number }>(
+    `/v1/branches/${branchId}/products`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ productIds, isAvailable }),
+    },
+  );
+  return response.updated;
+}

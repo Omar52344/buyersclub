@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api';
 import {
+  bulkSetBranchProducts,
   createBranch,
   createBusiness,
   createProduct,
@@ -23,6 +24,7 @@ import {
   getProducts,
   setBranchHours,
   setBranchOpen,
+  setProductBranches,
   type BranchSummary,
   type Business,
   type Category,
@@ -89,8 +91,12 @@ export default function VendorScreen() {
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [shareAll, setShareAll] = useState(true);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
+  const [busyBranchKey, setBusyBranchKey] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkBranchId, setBulkBranchId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState<'enable' | 'disable' | null>(null);
 
   const business = businesses[0] ?? null;
 
@@ -125,6 +131,16 @@ export default function VendorScreen() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const first = business?.branches[0]?.id ?? null;
+    if (
+      !bulkBranchId ||
+      !business?.branches.some((branch) => branch.id === bulkBranchId)
+    ) {
+      setBulkBranchId(first);
+    }
+  }, [business, bulkBranchId]);
 
   async function reload() {
     const list = await getMyBusinesses();
@@ -281,7 +297,11 @@ export default function VendorScreen() {
       setError('Escribe un precio mayor a cero.');
       return;
     }
-    if (!shareAll && selectedBranchIds.length === 0) {
+    if (business.branches.length === 0) {
+      setError('Primero crea una sucursal para asignarle el producto.');
+      return;
+    }
+    if (selectedBranchIds.length === 0) {
       setError('Selecciona al menos una sucursal para el producto.');
       return;
     }
@@ -293,8 +313,8 @@ export default function VendorScreen() {
         name: productName.trim(),
         description: productDescription.trim() || undefined,
         basePriceCents: priceCents,
-        shareWithAllBranches: shareAll,
-        branchIds: shareAll ? undefined : selectedBranchIds,
+        shareWithAllBranches: false,
+        branchIds: selectedBranchIds,
       });
       await reload();
       setProductName('');
@@ -303,14 +323,84 @@ export default function VendorScreen() {
       setSelectedBranchIds([]);
       setShowProductForm(false);
       setInfo(
-        shareAll
-          ? 'Producto creado y asignado a todas tus sucursales.'
-          : 'Producto creado. Asígnalo a las sucursales que quieras.',
+        `Producto creado en ${selectedBranchIds.length} ${
+          selectedBranchIds.length === 1 ? 'sucursal' : 'sucursales'
+        }.`,
       );
     } catch (caught) {
       setError(messageOf(caught));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleToggleProductBranch(product: Product, branchId: string) {
+    if (!business) {
+      return;
+    }
+    const key = `${product.id}:${branchId}`;
+    setBusyBranchKey(key);
+    setError(null);
+    setInfo(null);
+    try {
+      const branches = business.branches.map((branch) => {
+        const link = product.branches.find((item) => item.branchId === branch.id);
+        return {
+          branchId: branch.id,
+          priceCents: link?.priceCents ?? null,
+          stock: link?.stock ?? null,
+          isAvailable:
+            branch.id === branchId
+              ? !(link?.isAvailable ?? false)
+              : link?.isAvailable ?? false,
+        };
+      });
+      setProducts(await setProductBranches(product.id, branches));
+    } catch (caught) {
+      setError(messageOf(caught));
+    } finally {
+      setBusyBranchKey(null);
+    }
+  }
+
+  function toggleProductSelection(productId: string) {
+    setSelectedProductIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId],
+    );
+  }
+
+  function toggleSelectAllProducts() {
+    setSelectedProductIds((current) =>
+      current.length === products.length ? [] : products.map((product) => product.id),
+    );
+  }
+
+  async function handleBulkAvailability(isAvailable: boolean) {
+    if (!business || !bulkBranchId || selectedProductIds.length === 0) {
+      return;
+    }
+    const branch = business.branches.find((item) => item.id === bulkBranchId);
+    setBulkBusy(isAvailable ? 'enable' : 'disable');
+    setError(null);
+    setInfo(null);
+    try {
+      await bulkSetBranchProducts(bulkBranchId, selectedProductIds, isAvailable);
+      await reload();
+      setInfo(
+        `${selectedProductIds.length} ${
+          selectedProductIds.length === 1 ? 'producto' : 'productos'
+        } ${isAvailable ? 'habilitados' : 'deshabilitados'} en ${
+          branch?.name ?? 'la sucursal'
+        }.`,
+      );
+      setSelectedProductIds([]);
+      setSelectMode(false);
+    } catch (caught) {
+      setError(messageOf(caught));
+    } finally {
+      setBulkBusy(null);
     }
   }
 
@@ -615,36 +705,207 @@ export default function VendorScreen() {
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Catálogo</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowProductForm((current) => !current)}
-              >
-                <Text style={styles.link}>
-                  {showProductForm ? 'Cancelar' : '+ Agregar producto'}
-                </Text>
-              </Pressable>
+              <View style={styles.sectionActions}>
+                {products.length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setSelectMode((current) => !current);
+                      setSelectedProductIds([]);
+                    }}
+                  >
+                    <Text style={styles.link}>
+                      {selectMode ? 'Listo' : 'Seleccionar'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setShowProductForm((current) => !current)}
+                >
+                  <Text style={styles.link}>
+                    {showProductForm ? 'Cancelar' : '+ Producto'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
+
+            {selectMode ? (
+              <View style={styles.bulkCard}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.cardTitle}>Acciones por sucursal</Text>
+                  <Text style={styles.muted}>
+                    {selectedProductIds.length} seleccionados
+                  </Text>
+                </View>
+
+                {business.branches.length === 0 ? (
+                  <Text style={styles.warningText}>
+                    Crea una sucursal para asignar productos.
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.helper}>
+                      Elige la sucursal y aplica el cambio a los productos seleccionados.
+                    </Text>
+                    <View style={styles.chips}>
+                      {business.branches.map((branch) => (
+                        <Chip
+                          key={branch.id}
+                          label={branch.name}
+                          selected={bulkBranchId === branch.id}
+                          onPress={() => setBulkBranchId(branch.id)}
+                        />
+                      ))}
+                    </View>
+                    <View style={styles.bulkActions}>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={
+                          selectedProductIds.length === 0 || !bulkBranchId || bulkBusy !== null
+                        }
+                        onPress={() => void handleBulkAvailability(true)}
+                        style={[
+                          styles.bulkButton,
+                          (selectedProductIds.length === 0 ||
+                            !bulkBranchId ||
+                            bulkBusy !== null) &&
+                            styles.disabled,
+                        ]}
+                      >
+                        {bulkBusy === 'enable' ? (
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                          <Text style={styles.bulkButtonText}>Habilitar</Text>
+                        )}
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={
+                          selectedProductIds.length === 0 || !bulkBranchId || bulkBusy !== null
+                        }
+                        onPress={() => void handleBulkAvailability(false)}
+                        style={[
+                          styles.bulkButtonSecondary,
+                          (selectedProductIds.length === 0 ||
+                            !bulkBranchId ||
+                            bulkBusy !== null) &&
+                            styles.disabled,
+                        ]}
+                      >
+                        {bulkBusy === 'disable' ? (
+                          <ActivityIndicator color={colors.text} size="small" />
+                        ) : (
+                          <Text style={styles.bulkButtonTextSecondary}>Deshabilitar</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={toggleSelectAllProducts}
+                    >
+                      <Text style={styles.link}>
+                        {selectedProductIds.length === products.length
+                          ? 'Quitar selección'
+                          : 'Seleccionar todos'}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            ) : null}
 
             {products.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.muted}>
-                  Tu catálogo está vacío. Crea un producto y decide si aplica a todas las
-                  sucursales.
+                  Tu catálogo está vacío. Crea un producto y elige en qué sucursales se
+                  vende.
                 </Text>
               </View>
             ) : (
-              products.map((product) => (
-                <View key={product.id} style={styles.productCard}>
-                  <View style={styles.branchText}>
-                    <Text style={styles.itemTitle}>{product.name}</Text>
-                    <Text style={styles.muted}>
-                      {product.branches.length} sucursales ·{' '}
-                      {product.shareWithAllBranches ? 'compartido' : 'por sucursal'}
-                    </Text>
+              products.map((product) => {
+                const activeCount = product.branches.filter(
+                  (branch) => branch.isAvailable,
+                ).length;
+                const selected = selectedProductIds.includes(product.id);
+
+                return (
+                  <View
+                    key={product.id}
+                    style={[
+                      styles.productCard,
+                      selectMode && selected && styles.productCardSelected,
+                    ]}
+                  >
+                    <View style={styles.productHeader}>
+                      {selectMode ? (
+                        <Pressable
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: selected }}
+                          onPress={() => toggleProductSelection(product.id)}
+                          style={[
+                            styles.checkbox,
+                            selected && styles.checkboxChecked,
+                          ]}
+                        >
+                          {selected ? <Text style={styles.checkboxText}>✓</Text> : null}
+                        </Pressable>
+                      ) : null}
+                      <View style={styles.branchText}>
+                        <Text style={styles.itemTitle}>{product.name}</Text>
+                        <Text style={styles.muted}>
+                          {activeCount} de {business.branches.length} sucursales activas
+                        </Text>
+                      </View>
+                      <Text style={styles.price}>
+                        {money(product.basePriceCents, product.currency)}
+                      </Text>
+                    </View>
+
+                    {!selectMode ? (
+                      <View style={styles.productBranchesRow}>
+                        {business.branches.map((branch) => {
+                          const link = product.branches.find(
+                            (item) => item.branchId === branch.id,
+                          );
+                          const enabled = link?.isAvailable === true;
+                          const key = `${product.id}:${branch.id}`;
+                          return (
+                            <Pressable
+                              key={branch.id}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: enabled }}
+                              disabled={busyBranchKey?.startsWith(`${product.id}:`) ?? false}
+                              onPress={() => void handleToggleProductBranch(product, branch.id)}
+                              style={[
+                                styles.branchToggle,
+                                enabled && styles.branchToggleOn,
+                                (busyBranchKey?.startsWith(`${product.id}:`) ?? false) &&
+                                  styles.disabled,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.branchToggleText,
+                                  enabled && styles.branchToggleTextOn,
+                                ]}
+                              >
+                                {enabled ? '✓' : '+'} {branch.name}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+
+                    {activeCount === 0 ? (
+                      <Text style={styles.warningText}>
+                        No está disponible en ninguna sucursal.
+                      </Text>
+                    ) : null}
                   </View>
-                  <Text style={styles.price}>{money(product.basePriceCents, product.currency)}</Text>
-                </View>
-              ))
+                );
+              })
             )}
 
             {showProductForm ? (
@@ -670,23 +931,35 @@ export default function VendorScreen() {
                   placeholder="Horneado del día"
                   multiline
                 />
-                <View style={styles.switchRow}>
-                  <View style={styles.switchText}>
-                    <Text style={styles.label}>Compartir en todas las sucursales</Text>
-                    <Text style={styles.helper}>
-                      Las sucursales nuevas lo reciben automáticamente.
-                    </Text>
-                  </View>
-                  <Switch
-                    value={shareAll}
-                    onValueChange={setShareAll}
-                    trackColor={{ false: '#D1D5DB', true: colors.brand }}
-                  />
-                </View>
 
-                {!shareAll ? (
-                  <View style={styles.field}>
+                <View style={styles.field}>
+                  <View style={styles.rowBetween}>
                     <Text style={styles.label}>Sucursales donde se vende</Text>
+                    {business.branches.length > 0 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() =>
+                          setSelectedBranchIds(
+                            selectedBranchIds.length === business.branches.length
+                              ? []
+                              : business.branches.map((branch) => branch.id),
+                          )
+                        }
+                      >
+                        <Text style={styles.link}>
+                          {selectedBranchIds.length === business.branches.length
+                            ? 'Ninguna'
+                            : 'Todas'}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  {business.branches.length === 0 ? (
+                    <Text style={styles.warningText}>
+                      Crea una sucursal antes de agregar productos.
+                    </Text>
+                  ) : (
                     <View style={styles.chips}>
                       {business.branches.map((branch) => (
                         <Chip
@@ -703,18 +976,23 @@ export default function VendorScreen() {
                         />
                       ))}
                     </View>
-                  </View>
-                ) : null}
+                  )}
+
+                  <Text style={styles.helper}>
+                    Debes elegir al menos una. Después puedes activarlo o desactivarlo
+                    por sucursal desde esta misma lista.
+                  </Text>
+                </View>
 
                 <PrimaryButton label="Crear producto" busy={busy} onPress={handleCreateProduct} />
               </View>
             ) : null}
 
             <View style={styles.hintCard}>
-              <Text style={styles.hintTitle}>Siguiente en Fase 2</Text>
+              <Text style={styles.hintTitle}>Disponibilidad por sucursal</Text>
               <Text style={styles.hintText}>
-                Editar precios y stock por sucursal desde el catálogo, y la vista pública de tu
-                tienda en el mapa (Fase 3).
+                Toca una sucursal en un producto para activarlo o desactivarlo. Usa
+                “Seleccionar” para aplicar el cambio a varios productos a la vez.
               </Text>
             </View>
           </>
@@ -842,6 +1120,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   link: { color: colors.brand, fontWeight: '700', fontSize: 13 },
   emptyCard: {
     backgroundColor: colors.surface,
@@ -861,11 +1140,70 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
+    gap: spacing.sm,
+  },
+  productCardSelected: { borderColor: colors.brand, backgroundColor: '#F0FDFA' },
+  productHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
+  productBranchesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  branchToggle: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    borderRadius: radius.pill,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+  },
+  branchToggleOn: { backgroundColor: '#ECFDF5', borderColor: '#10B981' },
+  branchToggleText: { color: colors.muted, fontSize: 11, fontWeight: '600' },
+  branchToggleTextOn: { color: '#047857' },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxChecked: { backgroundColor: colors.brand, borderColor: colors.brand },
+  checkboxText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  bulkCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  bulkActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  bulkButton: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.pill,
+    paddingVertical: 9,
+    paddingHorizontal: 15,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  bulkButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  bulkButtonSecondary: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingVertical: 9,
+    paddingHorizontal: 15,
+    minWidth: 100,
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+  },
+  bulkButtonTextSecondary: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  warningText: { color: '#B45309', fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  disabled: { opacity: 0.6 },
   price: { color: colors.text, fontWeight: '800', fontSize: 15 },
   field: { gap: 6 },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },

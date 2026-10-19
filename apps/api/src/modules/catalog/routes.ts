@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  branchProductsBulkSchema,
   productBranchesUpdateSchema,
   productCreateSchema,
   productUpdateSchema,
@@ -7,6 +8,7 @@ import {
 import { AppError } from '../../errors';
 import { requireUserId } from '../../lib/auth-guard';
 import {
+  bulkSetBranchProducts,
   createProduct,
   listBranchProducts,
   listCategories,
@@ -57,5 +59,11 @@ export const catalogRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Params: { id: string } }>('/branches/:id/products', async (request) => {
     const userId = await requireUserId(request);
     return { products: await listBranchProducts(userId, request.params.id) };
+  });
+
+  app.put<{ Params: { id: string } }>('/branches/:id/products', async (request) => {
+    const userId = await requireUserId(request);
+    const body = branchProductsBulkSchema.parse(request.body);
+    return bulkSetBranchProducts(userId, request.params.id, body);
   });
 };

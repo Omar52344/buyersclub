@@ -162,16 +162,25 @@ export const branchOpenSchema = z.object({
   manualOpen: z.boolean(),
 });
 
-export const productCreateSchema = z.object({
-  businessId: z.string().uuid(),
-  name: z.string().min(2).max(120),
-  description: z.string().max(1000).optional(),
-  categoryId: z.string().uuid().optional(),
-  basePriceCents: z.number().int().nonnegative(),
-  imageFileId: z.string().uuid().optional(),
-  shareWithAllBranches: z.boolean().default(true),
-  branchIds: z.array(z.string().uuid()).optional(),
-});
+export const productCreateSchema = z
+  .object({
+    businessId: z.string().uuid(),
+    name: z.string().min(2).max(120),
+    description: z.string().max(1000).optional(),
+    categoryId: z.string().uuid().optional(),
+    basePriceCents: z.number().int().nonnegative(),
+    imageFileId: z.string().uuid().optional(),
+    shareWithAllBranches: z.boolean().default(false),
+    branchIds: z.array(z.string().uuid()).min(1).optional(),
+  })
+  .refine(
+    (input) =>
+      input.shareWithAllBranches || (input.branchIds?.length ?? 0) > 0,
+    {
+      message: 'Selecciona al menos una sucursal para el producto.',
+      path: ['branchIds'],
+    },
+  );
 
 export const productUpdateSchema = z.object({
   name: z.string().min(2).max(120).optional(),
@@ -192,6 +201,11 @@ export const productBranchesUpdateSchema = z.object({
       isAvailable: z.boolean().default(true),
     }),
   ),
+});
+
+export const branchProductsBulkSchema = z.object({
+  productIds: z.array(z.string().uuid()).min(1).max(200),
+  isAvailable: z.boolean(),
 });
 
 export const orderItemSchema = z.object({
@@ -274,6 +288,7 @@ export type BranchHoursUpdateInput = z.infer<typeof branchHoursUpdateSchema>;
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 export type ProductBranchesUpdateInput = z.infer<typeof productBranchesUpdateSchema>;
+export type BranchProductsBulkInput = z.infer<typeof branchProductsBulkSchema>;
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
 export type OrderStatusUpdateInput = z.infer<typeof orderStatusUpdateSchema>;
 export type OrderCancelInput = z.infer<typeof orderCancelSchema>;

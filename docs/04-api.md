@@ -160,14 +160,16 @@ dirección y ciudad obligatorias.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/products` | Productos de la empresa. `?businessId=` (obligatorio) |
-| POST | `/products` | Crea producto. `{businessId, name, description?, categoryId?, basePriceCents, imageFileId?, branchIds?, shareWithAllBranches?}` |
+| POST | `/products` | Crea producto. `{businessId, name, description?, categoryId?, basePriceCents, imageFileId?, branchIds, shareWithAllBranches?}` — `branchIds` es obligatorio salvo `shareWithAllBranches: true` |
 | PATCH | `/products/:id` | Edita producto, precio, disponibilidad |
 | DELETE | `/products/:id` | Desactiva (soft delete) |
-| PUT | `/products/:id/branches` | Define en qué sucursales está y con qué overrides `{branches: [{branchId, priceCents?, stock?, isAvailable}]}` |
+| PUT | `/products/:id/branches` | Define explícitamente las sucursales y sus overrides `{branches: [{branchId, priceCents?, stock?, isAvailable}]}` |
+| PUT | `/branches/:id/products` | Acción masiva: `{productIds, isAvailable}` habilita/deshabilita varios productos en una sucursal |
 
-`shareWithAllBranches: true` genera filas en `branch_products` para cada
-sucursal activa; las sucursales nuevas heredan los productos marcados como
-compartidos.
+La disponibilidad es **explícita**: un producto solo se vende en las sucursales
+con fila en `branch_products` y `isAvailable = true`. `shareWithAllBranches: true`
+solo se usa para heredar el producto en sucursales nuevas; al editar las
+sucursales de un producto se desactiva esa herencia.
 
 ## 6. Pedidos
 

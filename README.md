@@ -150,6 +150,7 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | App Expo: registro/login con contraseña, código alternativo y recuperación | ✅ |
 | Fase 2 API: empresa, sucursales, horarios, catálogo y overrides | ✅ Probada de punta a punta |
 | Fase 2 App: pantalla "Mi negocio" (empresa, sucursales, horarios y catálogo) | ✅ Incluida en el build web |
+| Catálogo por sucursal: selección explícita al crear y activación masiva | ✅ Probado |
 | Fase 3 API: PostGIS, radio, filtros y abierto/cerrado en servidor | ✅ Probada con datos reales |
 | Fase 3 App: explorar tiendas y ficha pública con catálogo | ✅ En el build web |
 | Mapa visual: Maps JS en web y `react-native-maps` en nativo | ✅ Configurado (keys en `.env`) |

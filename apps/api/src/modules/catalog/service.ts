@@ -1,5 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type {
+  BranchProductsBulkInput,
   ProductBranchesUpdateInput,
   ProductCreateInput,
   ProductUpdateInput,
@@ -187,9 +188,63 @@ export async function setProductBranches(
         })),
       );
     }
+    await tx
+      .update(products)
+      .set({ shareWithAllBranches: false, updatedAt: new Date() })
+      .where(eq(products.id, productId));
   });
 
   return listProducts(userId, product.businessId);
+}
+
+export async function bulkSetBranchProducts(
+  userId: string,
+  branchId: string,
+  input: BranchProductsBulkInput,
+) {
+  const { branch } = await assertBranchOwner(userId, branchId);
+  const productIds = [...new Set(input.productIds)];
+
+  const ownedProducts = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(
+      and(
+        eq(products.businessId, branch.businessId),
+        inArray(products.id, productIds),
+      ),
+    );
+
+  if (ownedProducts.length !== productIds.length) {
+    throw new AppError(
+      'PRODUCT_NOT_FOUND',
+      'Algún producto no pertenece a tu empresa.',
+      400,
+    );
+  }
+
+  await db
+    .insert(branchProducts)
+    .values(
+      productIds.map((productId) => ({
+        branchId,
+        productId,
+        isAvailable: input.isAvailable,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [branchProducts.branchId, branchProducts.productId],
+      set: { isAvailable: input.isAvailable },
+    });
+
+  if (!input.isAvailable) {
+    await db
+      .update(products)
+      .set({ shareWithAllBranches: false, updatedAt: new Date() })
+      .where(inArray(products.id, productIds));
+  }
+
+  return { updated: productIds.length };
 }
 
 export async function listBranchProducts(userId: string, branchId: string) {
