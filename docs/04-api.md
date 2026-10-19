@@ -128,9 +128,9 @@ de 200 y el viewport evitan cargas masivas.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/businesses` | Onboarding: crea empresa. `{name, categoryId, description?, slug?}` |
+| POST | `/businesses` | Onboarding: crea empresa. `{name, categoryId, description?, slug?, currency?}`; `currency` ∈ `COP`/`USD`, por defecto `COP` |
 | GET | `/businesses/me` | Empresa(s) del usuario |
-| PATCH | `/businesses/:id` | Nombre, logo, descripción |
+| PATCH | `/businesses/:id` | Nombre, logo, descripción. La moneda solo se puede cambiar si no hay pedidos |
 | POST | `/businesses/:id/branches` | Crea sucursal. `{name, address, lat, lng, phone, timezone}` (geocodifica si no hay lat/lng) |
 | GET | `/businesses/:id/branches` | Lista con `isOpen` y contadores de pedidos activos |
 | PATCH | `/branches/:id` | Dirección, contacto, envío, mínimos, ETA, medios |
@@ -187,6 +187,8 @@ compartidos.
 El servidor **recalcula** precios y totales (nunca confía en el cliente); si
 `clientTotalCents` no coincide, responde `409 PRICE_CHANGED` con el carrito
 actualizado. Los precios aplicados son los de `branch_products` (o el base).
+La moneda del pedido se toma de la empresa; si el cliente envía otra, se
+responde `422 CURRENCY_MISMATCH`.
 
 Transiciones permitidas (`POST /orders/:id/status`):
 
@@ -263,6 +265,11 @@ Respuesta de `vendor/summary`:
 
 Fechas interpretadas en la zona horaria de la empresa; `from`/`to` inclusivos
 por día.
+
+Todos los montos del dashboard del vendedor se expresan en la moneda de su
+empresa. El dashboard del comprador devuelve los totales **agrupados por
+moneda** (`totalsByCurrency: [{ currency, spentCents, orders }]`) cuando compró
+en negocios con COP y USD; no se aplican tasas de cambio.
 
 ## 10. Archivos
 

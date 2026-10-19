@@ -55,38 +55,39 @@ Probabilidad (P) e impacto (I): A = alto, M = medio, B = bajo.
 | D-08 | Monolito modular, sin microservicios en fase 1 | `02` ADR-004 |
 | D-09 | Sin monetización ni límites en fase 1 | `00` |
 | D-10 | Web con la misma base de código; SEO avanzado después | `02` ADR-002 |
+| D-11 | Moneda: **COP** por defecto y **USD** opcional por empresa; sin FX en fase 1 | `02` ADR-015 |
+| D-12 | **Google Maps Platform** como proveedor de mapas del MVP | `02` ADR-003 |
 
 ## 4. Decisiones pendientes
 
+**Decisiones ya cerradas en la revisión:** Colombia como país inicial, COP por
+defecto con USD opcional por empresa, Google Maps como proveedor de mapas,
+Fastify como backend y web desarrollada en paralelo con la misma base de código.
+
 | # | Decisión | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|
-| P1 | **País y moneda inicial** | Colombia/COP, México/MXN, otro | Colombia/COP (por el vocabulario del brief) | F1 (zonas horarias, formato, legal) |
-| P2 | **Prioridad web vs. app** | App-first, web-first, ambas | App-first; web responsive desde F2; SEO en fase 2 | F3 |
-| P3 | **Proveedor de mapas** | Google Maps, MapLibre/OSM, Mapbox | Google en MVP (velocidad), abstraído | F3 |
-| P4 | **Backend propio vs. Supabase** | Fastify propio, Supabase, híbrido | Fastify propio (control y aprendizaje); Supabase solo como Postgres gestionado | F1 |
-| P5 | **Proveedor de correo** | Resend, SES, Postmark | Resend (simple y barato) | F1 |
-| P6 | **Storage** | Cloudflare R2, S3, MinIO | R2 en producción, MinIO local | F2 |
-| P7 | **SMS (fase 2)** | Twilio, Infobip, proveedor local | Evaluar costo por país; Twilio como base | F5+ |
-| P8 | **Nombre y dominio** | buyersclub.* | Confirmar marca y dominio | F0 |
-| P9 | **Zona piloto** | Una ciudad/barrio | Una ciudad, 10–20 comercios | F8 |
-| P10 | **Quién modera** | Solo admin | Admin con acceso a SQL/backoffice mínimo | F7 |
-| P11 | **Propina y pedidos programados** | Sí/No | Fuera del MVP | F4 |
-| P12 | **Política de evidencia** | Retención 6/12/24 meses | 12 meses y borrado de la imagen | F5 |
+| P1 | **Proveedor de correo** | Resend, SES, Postmark | Resend (simple y barato) | F1 |
+| P2 | **Storage** | Cloudflare R2, S3, MinIO | R2 en producción, MinIO local | F2 |
+| P3 | **SMS (fase 2)** | Twilio, Infobip, proveedor local | Evaluar costo por país; Twilio como base | F5+ |
+| P4 | **Nombre y dominio** | buyersclub.* | Confirmar marca y dominio | F0 |
+| P5 | **Zona piloto** | Una ciudad/barrio | Una ciudad, 10–20 comercios | F8 |
+| P6 | **Quién modera** | Solo admin | Admin con acceso a SQL/backoffice mínimo | F7 |
+| P7 | **Propina y pedidos programados** | Sí/No | Fuera del MVP | F4 |
+| P8 | **Política de evidencia** | Retención 6/12/24 meses | 12 meses y borrado de la imagen | F5 |
 
 ## 5. Preguntas para el usuario
 
-1. **¿En qué país arrancamos?** Define moneda, impuestos, zonas horarias y el
-   marco legal de protección de datos.
-2. **¿La web es un canal de adquisición importante (SEO) o solo un "extra"**
-   para usar la app desde el computador? Si es lo primero, conviene planear
-   `apps/web` con Next.js desde el inicio.
-3. **¿Quién valida el pago: solo el vendedor o también un administrador** en
+**Ya resueltas:** país (Colombia), monedas (COP por defecto, USD opcional),
+prioridad web (en paralelo, misma base de código), proveedor de mapas (Google) y
+backend (Fastify).
+
+1. **¿Quién valida el pago: solo el vendedor o también un administrador** en
    caso de disputa?
-4. **¿Los productos deben tener stock** o alcanza con "disponible / no
+2. **¿Los productos deben tener stock** o alcanza con "disponible / no
    disponible" en el MVP?
-5. **¿Hay un diseño de marca** (logo, colores, nombre definitivo) o lo definimos
+3. **¿Hay un diseño de marca** (logo, colores, nombre definitivo) o lo definimos
    en F1?
-6. **¿Confirmas el enfoque passwordless** (sin contraseñas, todo por código) o
+4. **¿Confirmas el enfoque passwordless** (sin contraseñas, todo por código) o
    quieres además correo+contraseña?
 
 ## 6. Métricas de éxito del MVP (fase 1)
@@ -106,7 +107,7 @@ Probabilidad (P) e impacto (I): A = alto, M = medio, B = bajo.
 ## 7. Criterios de salida de la fase de planificación
 
 - [ ] Documentos `00`–`07` revisados y aprobados.
-- [ ] P1–P4 resueltas (país, prioridad web, mapas, backend).
+- [x] Decisiones de país/moneda, web, mapas y backend resueltas.
 - [ ] Cuentas creadas: Apple Developer, Google Play, Firebase, Expo/EAS,
       dominio, correo transaccional, storage.
 - [ ] Presupuesto mensual estimado aceptado (hosting, correo, mapas, tiendas).

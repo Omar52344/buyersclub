@@ -129,6 +129,8 @@ web dentro de la app. Se incluye en la matriz solo como referencia.
 5. **Riesgo controlado**: la lógica de negocio vive en `packages/core`
    (TypeScript puro), así que si más adelante se agrega un frontend Next.js para
    SEO, se reutiliza sin tocar el backend.
+6. **Web en paralelo**: la misma app corre en el navegador, así que cada pantalla
+   se prueba en web, iOS y Android desde la Fase 1, sin un segundo frontend.
 
 ### Qué se pierde y cómo se mitiga
 
@@ -138,7 +140,7 @@ web dentro de la app. Se incluye en la matriz solo como referencia.
 | WebView vs nativo | Expo usa vistas nativas reales (no WebView) en iOS/Android |
 | Librerías que exigen código nativo | Usar *dev client* desde el inicio (no depender de Expo Go) |
 | Mapas de Google con costo | Abstraer el proveedor; plan B con MapLibre + tiles OSM |
-| Complejidad del monorepo | pnpm workspaces + Turborepo, configurado una vez en Fase 1 |
+| Complejidad del monorepo | npm workspaces (Turborepo opcional), configurado una vez en Fase 1 |
 
 ## 6. Notificaciones: análisis específico
 
@@ -168,6 +170,10 @@ buena parte de eso y expone una API única, con un servicio de envío ya resuelt
 | "Tiendas cerca de mí" | PostGIS `ST_DWithin` sobre `geography(Point)` con índice GiST | Igual (independiente del proveedor de mapas) |
 | Geocodificar direcciones al registrar sucursal | API de Geocoding de Google (o Nominatim gratis) | Nominatim/Photon self-hosted |
 | Ruta y ETA real | Cálculo simple (prep time + tránsito fijo) | Directions API / OSRM |
+
+**Decisión cerrada:** se usa **Google Maps Platform** como proveedor del MVP
+(Maps SDK en Android/iOS vía `react-native-maps`, Maps JavaScript API en web y
+Geocoding para direcciones). El gasto se monitorea desde el primer día.
 
 **Costo**: Google Maps Platform tiene una capa gratuita mensual por SKU
 (verificar montos vigentes). Para un MVP con pocos usuarios no se paga, pero
@@ -208,8 +214,9 @@ Componentes:
 
 ## 10. Conclusión
 
-**React Native + Expo + Fastify + PostgreSQL/PostGIS** es la combinación con
-mejor relación cobertura/velocidad/riesgo para este producto. Mantiene el
-lenguaje único (TypeScript), resuelve notificaciones con un servicio gestionado,
-permite mapas nativos y deja abierta la puerta a una web con SEO sin reescribir
-nada crítico.
+**React Native + Expo + Fastify + PostgreSQL/PostGIS + Google Maps** es la
+combinación con mejor relación cobertura/velocidad/riesgo para este producto.
+Mantiene el lenguaje único (TypeScript), resuelve notificaciones con un servicio
+gestionado, permite mapas nativos, deja la web disponible en paralelo desde el
+primer día y mantiene abierta la puerta a una web con SEO sin reescribir nada
+crítico.

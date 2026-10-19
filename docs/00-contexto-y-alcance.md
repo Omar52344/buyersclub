@@ -98,6 +98,8 @@ sequenceDiagram
   horarios, estado activo manual, medios de entrega.
 - Catálogo: productos a nivel empresa y **disponibilidad/precio por sucursal**
   (soporta catálogo compartido y catálogo propio por sucursal).
+- Multi-moneda acotada: **COP** por defecto y **USD** opcional al crear la
+  empresa, sin conversión entre monedas.
 - Mapa de descubrimiento con radio, filtros y estado abierto/cerrado.
 - Carrito y pedido: domicilio o recogida, notas, propina (opcional), costo de
   envío definido por sucursal.
@@ -119,14 +121,15 @@ sequenceDiagram
 - Motor de ruteo/ETA real, repartidores propios, tracking GPS del repartidor.
 - Comisiones, planes, límites, publicidad, suscripciones.
 - Reseñas y reputación, favoritos, cupones (fase 2–3).
-- Multi-idioma, multi-moneda (se deja `currency` en el modelo desde el día 1).
+- Multi-idioma y conversión entre monedas (COP/USD existen por empresa, sin FX).
 - Inventario avanzado (variantes, lotes, modificadores de producto).
 - Backoffice de administración completo (solo operaciones manuales en SQL).
 
 ## 6. Supuestos de trabajo
 
-1. **País inicial: LATAM hispanohablante** (probablemente Colombia por el uso de
-   "domicilio" y "sucursales"). Moneda por defecto: COP. *A confirmar.*
+1. **País inicial: Colombia.** Moneda base **COP**; el vendedor puede elegir
+   **USD** al crear su empresa. No hay conversión entre monedas en fase 1: cada
+   empresa opera y reporta en su moneda.
 2. Los montos se guardan en **enteros (centavos)**; nunca floats.
 3. Un pedido pertenece a **una sola sucursal** (no multi-vendedor en un carrito).
 4. El vendedor define el costo de envío; no hay tarifas por distancia en el MVP.
@@ -153,6 +156,8 @@ sequenceDiagram
 | R8 | Un producto inactivo o sin stock en la sucursal no se puede añadir al carrito. |
 | R9 | El vendedor no puede desactivar una sucursal con pedidos activos sin advertirlo. |
 | R10 | Toda acción sensible (validar pago, cambio de estado, edición de precios) queda en el log de auditoría. |
+| R11 | La moneda de la empresa (COP o USD) se define al crearla; no se puede cambiar si ya hay pedidos. Todos sus productos, pedidos y reportes usan esa moneda. |
+| R12 | Un pedido no puede mezclar montos de distintas monedas; el servidor rechaza cualquier desajuste. |
 
 ## 8. Glosario
 

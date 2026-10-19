@@ -88,6 +88,8 @@ Como usuario quiero editar mi nombre, foto y datos de contacto.
 Como vendedor quiero registrar el nombre de mi empresa para empezar a vender.
 
 - [ ] Nombre obligatorio; slug autogenerado y editable (único).
+- [ ] Selector de moneda **COP / USD** con **COP** por defecto, elegido al crear
+      la empresa; queda bloqueado cuando ya hay pedidos.
 - [ ] Categoría principal obligatoria (panadería, restaurante, droguería…).
 - [ ] Logo opcional (subida con compresión).
 - [ ] Al crear, el usuario obtiene el rol `vendor_owner`.
@@ -391,6 +393,7 @@ Como vendedor quiero ver el consolidado de ventas para tomar decisiones.
 - [ ] Serie temporal de ventas y pedidos.
 - [ ] Top productos del periodo.
 - [ ] Embudo por estado.
+- [ ] Todos los montos en la moneda de la empresa (COP o USD), sin conversión.
 - [ ] Solo incluye pedidos `completed` en ventas; cancelados/rechazados aparte.
 - [ ] Exportar CSV (S).
 
@@ -401,6 +404,7 @@ Como comprador quiero ver cuánto he comprado y en qué comercios.
 - [ ] Gasto total, número de pedidos, ticket promedio.
 - [ ] Serie temporal de compras.
 - [ ] Comercios frecuentes y categorías más compradas.
+- [ ] Gastos separados por moneda (COP/USD) cuando aplique; sin conversión.
 - [ ] Pedidos activos destacados.
 
 ### HU-41 · Vista por sucursal (M, 3)

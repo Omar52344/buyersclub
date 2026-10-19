@@ -33,7 +33,7 @@
 
 ### F1 — Fundaciones · 2–3 semanas
 **Entregables**
-- Monorepo (pnpm + Turborepo), `packages/core`, `packages/ui`, `packages/config`.
+- Monorepo (npm workspaces), `packages/core`, `packages/ui`, `packages/config`.
 - `docker-compose` con Postgres+PostGIS, Redis, MinIO y Mailpit.
 - Esquema base con Drizzle + migraciones + seeds.
 - API Fastify con plugins (db, errores, auth, rate limit, logs) y `/health`.
@@ -50,6 +50,8 @@ teléfono, iniciar sesión y llegar a un home vacío en iOS, Android y web.
 ### F2 — Vendedor: negocio, sucursales y catálogo · 3 semanas
 **Entregables**
 - Onboarding de empresa y sucursales con mapa y geocodificación.
+- Selección de moneda al crear la empresa (**COP** por defecto, **USD**
+  opcional) y bloqueo cuando ya hay pedidos.
 - Horarios, excepciones, interruptor de apertura, configuración de entrega.
 - CRUD de productos con imagen y categorías.
 - Catálogo compartido y overrides por sucursal.
@@ -107,6 +109,8 @@ comprador recibe push y el pedido avanza; un rechazo permite reenviar.
 - Dashboard vendedor: KPIs, comparación, por sucursal, serie temporal, top
   productos, embudo.
 - Dashboard comprador: gasto, pedidos, ticket, serie, comercios frecuentes.
+- Agrupación por moneda (COP/USD) en el dashboard del comprador y montos en la
+  moneda de la empresa en el del vendedor.
 - Exportación CSV del vendedor (S).
 
 **Criterio de salida**: los números del dashboard cuadran con los pedidos del

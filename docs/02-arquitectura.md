@@ -102,7 +102,8 @@ Reglas del monorepo:
   `packages/core`.
 - `packages/core` no depende de React ni de Fastify: es TypeScript puro
   (funciones de dinero, estados, validaciones, cálculo de ETA).
-- Un solo lockfile (pnpm). Versiones de RN/Expo alineadas por el `expo` CLI.
+- Un solo lockfile (`package-lock.json`). Versiones de RN/Expo alineadas por el
+  `expo` CLI.
 
 ## 3. Capas del backend
 
@@ -174,7 +175,7 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 
 ## 8. CI/CD
 
-- **CI en cada PR**: `pnpm typecheck`, `pnpm lint`, tests de `packages/core` y
+- **CI en cada PR**: `npm run typecheck`, `npm run lint`, tests de `packages/core` y
   de servicios de la API, `expo-doctor`, chequeo de migraciones pendientes.
 - **CD**: merge a `main` → deploy de API (Railway/Fly) + migraciones
   automáticas con *expand/contract* (compatibles hacia atrás). Web → build
@@ -204,7 +205,8 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 - Cache: TanStack Query en el cliente; Redis para rate limits y jobs (no para
   datos de negocio en fase 1).
 - Analítica: SQL agregado con `date_trunc` y zona horaria de la sucursal;
-  materializar vistas solo si las consultas superan ~300 ms.
+  montos siempre en la moneda de la empresa; en el comprador se agrupa por
+  moneda. Materializar vistas solo si las consultas superan ~300 ms.
 
 ## 11. ADRs
 
@@ -219,9 +221,13 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 - **Consecuencias**: si se agrega `apps/web`, reutiliza API y reglas; el costo es
   mantener dos UIs.
 
-### ADR-003 — Proveedor de mapas detrás de una interfaz
-- **Decisión**: `packages/ui/map` con implementación `.native.tsx` y `.web.tsx`.
-- **Consecuencias**: cambiar de Google a MapLibre/OSM es un cambio localizado.
+### ADR-003 — Google Maps Platform, aislado tras una interfaz
+- **Decisión**: usar Google Maps (`react-native-maps` en nativo, Maps JS +
+  Geocoding en web) encapsulado en `packages/ui/map` con implementaciones
+  `.native.tsx` y `.web.tsx`.
+- **Consecuencias**: integración y geocodificación resueltas; el costo por carga
+  se monitorea. Cambiar a MapLibre/OSM sigue siendo un cambio localizado si el
+  costo se dispara.
 
 ### ADR-004 — Monolito modular con REST + WebSocket
 - **Decisión**: un proceso API, un proceso worker, módulos por dominio.
@@ -283,3 +289,17 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 - **Decisión**: EAS Build + EAS Update; sin Mac propio.
 - **Consecuencias**: costo por build en planes altos; el plan gratuito alcanza
   para el MVP.
+
+### ADR-015 — Multi-moneda limitada a COP y USD, sin conversión
+- **Decisión**: `businesses.currency` ∈ `{COP, USD}`, elegida al crear la
+  empresa. Productos, precios de sucursal y pedidos usan esa moneda; el pedido
+  guarda un snapshot. No se puede cambiar la moneda si ya hay pedidos.
+- **Consecuencias**: los dashboards del vendedor consolidan en su moneda; el del
+  comprador agrupa por moneda cuando compró en ambas. No hay tasas de cambio ni
+  redondeo cruzado. Agregar más monedas o FX es una decisión de fase 2.
+
+### ADR-016 — Web en paralelo desde la Fase 1
+- **Decisión**: la web es la misma app Expo; en cada fase se valida en navegador
+  (desktop y móvil) además de iOS y Android. No se crea `apps/web` todavía.
+- **Consecuencias**: se detecta deuda responsive temprano y hay demos continuas
+  en la URL web; si el SEO se vuelve crítico, se activa ADR-002.

@@ -101,8 +101,14 @@ PK `(user_id, role, business_id)`.
 
 ### `businesses`
 `id`, `owner_user_id` FK, `name`, `slug` UNIQUE, `description`, `logo_file_id`,
-`category_id` FK, `tax_id` (NIT/RUC, opcional), `currency` CHAR(3),
+`category_id` FK, `tax_id` (NIT/RUC, opcional), `currency` CHAR(3) NOT NULL
+DEFAULT `'COP'` con `CHECK (currency IN ('COP','USD'))`,
 `status` (`draft`,`active`,`suspended`), `created_at`, `updated_at`.
+
+La moneda se elige al crear la empresa y **no se puede cambiar si ya existen
+pedidos** (los pedidos guardan su propia moneda como snapshot). Todos los
+productos, precios de sucursal, pedidos y reportes de esa empresa usan la misma
+moneda. No hay conversión FX en fase 1.
 
 ### `business_members`
 `business_id`, `user_id`, `role` (`owner`,`staff`), `branch_id` NULL
@@ -237,6 +243,10 @@ stateDiagram-v2
 Índices: `(branch_id, status, created_at DESC)`,
 `(buyer_user_id, created_at DESC)`, `(business_id, created_at)`.
 
+`currency` se copia de la empresa al crear el pedido (snapshot) y **no se
+recalcula**: si la empresa cambia de moneda en el futuro, el historial conserva
+la moneda original.
+
 ### `order_items`
 `id`, `order_id`, `product_id` (FK con `ON DELETE RESTRICT`),
 `name_snapshot`, `unit_price_cents`, `qty` int, `line_total_cents`, `notes`,
@@ -330,7 +340,8 @@ Series temporales con `date_trunc('day', created_at AT TIME ZONE b.timezone)`.
 
 ### Indicadores comprador
 Órdenes por estado, gasto total y por mes, ticket promedio, comercios
-frecuentes, pedidos activos.
+frecuentes, pedidos activos. Si el comprador compró en negocios con COP y USD,
+los totales se devuelven separados por moneda (sin conversión).
 
 ## 10. Migraciones y datos
 
@@ -338,7 +349,7 @@ frecuentes, pedidos activos.
 - Estrategia **expand/contract** para despliegues sin downtime.
 - Seeds de desarrollo: 1 admin, 2 vendedores con 3 sucursales, ~30 productos,
   10 pedidos en distintos estados y conversaciones con imágenes de ejemplo.
-- Script `pnpm db:reset` para levantar el entorno local desde cero.
+- Script `npm run db:reset` para levantar el entorno local desde cero.
 
 ## 11. Retención y privacidad
 
