@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNull, or, sql } from 'drizzle-orm';
 import type {
   LoginPasswordInput,
   LoginStartInput,
@@ -6,17 +6,29 @@ import type {
   OtpRequestInput,
   PasswordResetInput,
   PasswordResetRequestInput,
+  ProfileUpdateInput,
   SignupInput,
   SignupVerifyEmailInput,
   SignupVerifyPhoneInput,
 } from '@buyersclub/core';
 import { db } from '../../db/index';
-import { businesses, refreshTokens, userRoles, users, verifications } from '../../db/schema';
+import {
+  addresses,
+  businesses,
+  deviceTokens,
+  files,
+  orders,
+  refreshTokens,
+  userRoles,
+  users,
+  verifications,
+} from '../../db/schema';
 import { AppError } from '../../errors';
 import { config } from '../../config';
 import { signAccessToken } from '../../lib/tokens';
 import { sendOtpEmail } from '../../lib/mailer';
 import { hashPassword, verifyPassword } from '../../lib/password';
+import { deleteFileObject } from '../files/service';
 import {
   generateOtpCode,
   generateRefreshToken,
@@ -28,6 +40,15 @@ import {
   OTP_WINDOW_MINUTES,
   verifyOtp,
 } from '../../lib/otp';
+
+const ACTIVE_ORDER_STATUSES = [
+  'pending',
+  'awaiting_payment',
+  'accepted',
+  'preparing',
+  'ready',
+  'out_for_delivery',
+] as const;
 
 export interface RequestMeta {
   ip?: string;
@@ -624,4 +645,117 @@ export async function logout(token: string): Promise<void> {
     .update(refreshTokens)
     .set({ revokedAt: new Date() })
     .where(eq(refreshTokens.tokenHash, hashToken(token)));
+}
+
+
+export async function updateProfile(
+  userId: string,
+  input: ProfileUpdateInput,
+) {
+  const user = await findActiveUserById(userId);
+  const patch: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+  if (input.fullName !== undefined) {
+    patch.fullName = input.fullName.trim() || null;
+  }
+  const [updated] = await db
+    .update(users)
+    .set(patch)
+    .where(eq(users.id, user.id))
+    .returning();
+  if (!updated) {
+    throw new AppError('USER_UPDATE_FAILED', 'No pudimos actualizar el perfil.', 500);
+  }
+  return toPublicUser(updated);
+}
+
+export async function deleteAccount(userId: string) {
+  const user = await findActiveUserById(userId);
+  const activeStatuses = [...ACTIVE_ORDER_STATUSES];
+
+  const [buyerActive] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(
+      and(eq(orders.buyerUserId, user.id), inArray(orders.status, activeStatuses)),
+    );
+
+  const owned = await db
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(eq(businesses.ownerUserId, user.id));
+
+  let ownerActive = 0;
+  if (owned.length > 0) {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.businessId, owned.map((business) => business.id)),
+          inArray(orders.status, activeStatuses),
+        ),
+      );
+    ownerActive = row?.count ?? 0;
+  }
+
+  if ((buyerActive?.count ?? 0) + ownerActive > 0) {
+    throw new AppError(
+      'ACTIVE_ORDERS',
+      'Termina o cancela tus pedidos activos antes de eliminar la cuenta.',
+      409,
+    );
+  }
+
+  const ownedFiles = await db
+    .select({ key: files.key })
+    .from(files)
+    .where(eq(files.ownerUserId, user.id));
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({
+        email: `deleted-${user.id}@deleted.buyersclub.local`,
+        phone: `+999${user.id.replace(/-/g, '').slice(0, 11)}`,
+        fullName: null,
+        passwordHash: null,
+        avatarFileId: null,
+        emailVerifiedAt: null,
+        phoneVerifiedAt: null,
+        phoneVerificationMethod: null,
+        status: 'blocked',
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    if (owned.length > 0) {
+      await tx
+        .update(businesses)
+        .set({ status: 'suspended', updatedAt: new Date() })
+        .where(inArray(businesses.id, owned.map((business) => business.id)));
+    }
+
+    await tx
+      .update(orders)
+      .set({
+        buyerName: 'Cliente eliminado',
+        buyerPhone: null,
+        deliveryAddressSnapshot: null,
+      })
+      .where(eq(orders.buyerUserId, user.id));
+
+    await tx.delete(addresses).where(eq(addresses.userId, user.id));
+    await tx.delete(deviceTokens).where(eq(deviceTokens.userId, user.id));
+    await tx.delete(refreshTokens).where(eq(refreshTokens.userId, user.id));
+    await tx.delete(verifications).where(eq(verifications.userId, user.id));
+    await tx.delete(userRoles).where(eq(userRoles.userId, user.id));
+    await tx.delete(files).where(eq(files.ownerUserId, user.id));
+  });
+
+  await Promise.all(
+    ownedFiles.map((file) => deleteFileObject(file.key).catch(() => undefined)),
+  );
+
+  return { ok: true };
 }

@@ -10,10 +10,22 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buyersclub.app",
-      "icon": "./assets/expo.icon"
+      "buildNumber": "1",
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Permite seleccionar imágenes para el comprobante de pago y el chat.",
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para mostrar tiendas y sucursales cercanas.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.buyersclub.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0F766E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -35,6 +47,12 @@
         }
       ],
       "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usamos tu ubicación para mostrar tiendas y sucursales cercanas."
+        }
+      ],
       [
         "expo-splash-screen",
         {

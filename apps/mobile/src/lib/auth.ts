@@ -1,4 +1,5 @@
 import { ApiError, bearer, fetchApi } from './api';
+import { authedRequest } from './authed';
 import { clearSession, loadSession, saveSession } from './token-store';
 
 export interface PublicUser {
@@ -176,5 +177,19 @@ export async function signOut(): Promise<void> {
       // Aunque falle la API, cerramos la sesión local.
     }
   }
+  await clearSession();
+}
+
+
+export async function updateProfile(fullName: string): Promise<PublicUser> {
+  const response = await authedRequest<{ user: PublicUser }>('/v1/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ fullName }),
+  });
+  return response.user;
+}
+
+export async function deleteAccount(): Promise<void> {
+  await authedRequest('/v1/me', { method: 'DELETE' });
   await clearSession();
 }

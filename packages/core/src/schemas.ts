@@ -73,6 +73,10 @@ export const deviceTokenSchema = z.object({
   platform: z.enum(['ios', 'android']),
 });
 
+export const profileUpdateSchema = z.object({
+  fullName: z.string().min(2).max(120).optional(),
+});
+
 export const businessCreateSchema = z.object({
   name: z.string().min(2).max(80),
   description: z.string().max(500).optional(),
@@ -261,6 +265,7 @@ export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchem
 export type PasswordResetInput = z.infer<typeof passwordResetSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type DeviceTokenInput = z.infer<typeof deviceTokenSchema>;
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type BusinessCreateInput = z.infer<typeof businessCreateSchema>;
 export type BusinessUpdateInput = z.infer<typeof businessUpdateSchema>;
 export type BranchCreateInput = z.infer<typeof branchCreateSchema>;

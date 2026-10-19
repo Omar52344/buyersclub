@@ -1,4 +1,5 @@
 import { createReadStream, existsSync } from 'node:fs';
+import { unlink } from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,6 +8,7 @@ import { and, eq, or } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
@@ -206,4 +208,19 @@ export async function fileStream(fileKey: string): Promise<Readable> {
     throw new AppError('FILE_NOT_FOUND', 'La imagen no existe en el servidor.', 404);
   }
   return createReadStream(filePath);
+}
+
+
+export async function deleteFileObject(fileKey: string): Promise<void> {
+  const client = getS3();
+  if (client) {
+    await client.send(
+      new DeleteObjectCommand({ Bucket: config.S3_BUCKET, Key: fileKey }),
+    );
+    return;
+  }
+  const filePath = path.join(uploadRoot, fileKey);
+  if (existsSync(filePath)) {
+    await unlink(filePath);
+  }
 }

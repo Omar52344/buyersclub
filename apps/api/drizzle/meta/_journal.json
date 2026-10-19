@@ -43,6 +43,13 @@
       "when": 1792385000641,
       "tag": "0005_branch_location_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792426554584,
+      "tag": "0006_user_deleted",
+      "breakpoints": true
     }
   ]
 }

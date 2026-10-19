@@ -91,6 +91,7 @@ export const users = pgTable('users', {
   avatarFileId: uuid('avatar_file_id'),
   locale: text('locale').notNull().default('es'),
   status: userStatusEnum('status').notNull().default('pending'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   ...timestamps(),
 });
 

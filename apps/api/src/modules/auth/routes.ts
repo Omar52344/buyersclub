@@ -6,6 +6,7 @@ import {
   otpRequestSchema,
   passwordResetRequestSchema,
   passwordResetSchema,
+  profileUpdateSchema,
   refreshTokenSchema,
   signupSchema,
   signupVerifyEmailSchema,
@@ -13,6 +14,7 @@ import {
 } from '@buyersclub/core';
 import { requireUserId } from '../../lib/auth-guard';
 import {
+  deleteAccount,
   getPublicUserById,
   loginWithPassword,
   logout,
@@ -22,6 +24,7 @@ import {
   resetPassword,
   startLoginOtp,
   startSignup,
+  updateProfile,
   verifyLoginOtp,
   verifySignupEmail,
   verifySignupPhone,
@@ -109,5 +112,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.get('/me', async (request) => {
     const userId = await requireUserId(request);
     return { user: await getPublicUserById(userId) };
+  });
+
+  app.patch('/me', async (request) => {
+    const userId = await requireUserId(request);
+    const body = profileUpdateSchema.parse(request.body);
+    return { user: await updateProfile(userId, body) };
+  });
+
+  app.delete('/me', async (request) => {
+    const userId = await requireUserId(request);
+    return deleteAccount(userId);
   });
 };

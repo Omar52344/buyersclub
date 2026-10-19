@@ -46,6 +46,8 @@ full-stack; 8–10 semanas con 2 desarrolladores en paralelo. Detalle en
 | [05-funcionalidades.md](docs/05-funcionalidades.md) | Historias de usuario y criterios de aceptación por módulo |
 | [06-roadmap.md](docs/06-roadmap.md) | Fases, hitos, estimaciones y definición de "terminado" |
 | [07-riesgos-y-decisiones.md](docs/07-riesgos-y-decisiones.md) | Riesgos técnicos/legales, mitigaciones y decisiones pendientes |
+| [08-beta-release.md](docs/08-beta-release.md) | Checklist de beta, builds EAS, tiendas, piloto y rollback |
+| [Términos](docs/legal/terminos.md) / [Privacidad](docs/legal/privacidad.md) | Plantillas legales para revisión y publicación |
 
 ---
 
@@ -159,14 +161,15 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 6 App: dashboard del vendedor y "Mis indicadores" del comprador | ✅ En el build web |
 | Fase 7 API: notificaciones in-app/push, WebSocket, S3 opcional y auditoría | ✅ Probado |
 | Fase 7 App: bandeja de notificaciones, push y chat en tiempo real | ✅ (push requiere dev build/EAS) |
-| Beta y release a tiendas | ⏳ Fase 8 |
+| Fase 8: eliminación de cuenta, perfil, metadatos, legales y CI | ✅ Preparado y probado |
+| Builds EAS, TestFlight/Play y beta piloto | ⏳ Requiere cuentas y credenciales |
 
 ## 9. Próximo paso
 
-La **Fase 7 quedó completa**: notificaciones in-app y push con Expo, WebSocket
-autenticado para el chat, almacenamiento S3/R2 opcional (probado con Moto),
-auditoría de acciones sensibles, Helmet, límites por ruta y limpieza periódica de
-OTP/tokens.
+La **beta está preparada**: eliminación de cuenta desde la app (probada), edición
+de perfil, metadatos y permisos de tienda, textos legales, checklist de release y
+CI. La Fase 7 dejó notificaciones in-app/push, WebSocket, S3/R2 opcional,
+auditoría, Helmet y limpieza periódica.
 
 > El chat mantiene *polling* de respaldo cada 15 s y recibe eventos inmediatos
 > por WebSocket. Las imágenes usan `.uploads` por defecto y S3/R2 si defines
@@ -194,5 +197,7 @@ OTP/tokens.
   `apps/api/.uploads`.
 - La bandeja in-app funciona siempre; el push es el canal de aviso.
 
-Sigue la **Fase 8 — Beta y release**: builds con EAS, TestFlight/Play Internal,
-zona piloto, términos y privacidad, y checklist de tiendas.
+El siguiente paso es **ejecutar la beta**: crear el proyecto EAS, configurar
+`EAS_PROJECT_ID` y los secretos, publicar términos/privacidad, compilar para
+TestFlight/Play Internal y arrancar la zona piloto. El detalle está en
+[08-beta-release.md](docs/08-beta-release.md).

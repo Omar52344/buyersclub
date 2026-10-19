@@ -1,8 +1,7 @@
 # 06 — Roadmap y estimación
 
-> **Estado de implementación:** F1 ✅, F2 ✅, F3 ✅, F4 ✅, F5 ✅, F6 ✅ y F7 ✅
-> (autenticación, empresa, sucursales, catálogo, descubrimiento, mapa, carrito,
-> pedidos, chat, pagos, dashboards, push y WebSocket). F8 siguiente.
+> **Estado de implementación:** F1–F7 ✅; F8 preparada (eliminación de cuenta, metadatos, legal y CI).
+> Falta ejecutar builds y beta con credenciales de Apple/Google/EAS.
 
 ## 1. Supuestos de estimación
 

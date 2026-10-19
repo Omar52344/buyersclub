@@ -154,6 +154,15 @@ export default function HomeScreen() {
 
         <Pressable
           accessibilityRole="button"
+          onPress={() => router.push('/settings')}
+          style={styles.quickCardWide}
+        >
+          <Text style={styles.quickTitle}>Cuenta y ajustes</Text>
+          <Text style={styles.quickText}>Perfil, sesión y eliminar cuenta</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
           onPress={() => router.push('/my-dashboard')}
           style={styles.quickCardWide}
         >

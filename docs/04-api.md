@@ -76,7 +76,7 @@ activas.
 | POST | `/auth/refresh` | `{refreshToken}` rotativo |
 | POST | `/auth/logout` | Revoca refresh token del dispositivo |
 | GET | `/me` | Perfil + roles + onboarding |
-| PATCH | `/me` | Nombre, avatar, locale |
+| PATCH | `/me` | Nombre del perfil |
 | DELETE | `/me` | Elimina/anonimiza la cuenta (requisito de tiendas) |
 | POST | `/me/devices` | Registra `expoPushToken`, plataforma |
 | DELETE | `/me/devices/:token` | Desregistra push |
