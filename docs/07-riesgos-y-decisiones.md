@@ -67,7 +67,7 @@ Fastify como backend y web desarrollada en paralelo con la misma base de código
 | # | Decisión | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|
 | P1 | **Proveedor de correo** | Resend, SES, Postmark | Resend (simple y barato) | F1 |
-| P2 | **Storage** | Cloudflare R2, S3, MinIO | R2 en producción, MinIO local | F2 |
+| P2 | **Storage** | Cloudflare R2, S3, Moto | R2 en producción, Moto local | F2 |
 | P3 | **SMS (fase 2)** | Twilio, Infobip, proveedor local | Evaluar costo por país; Twilio como base | F5+ |
 | P4 | **Nombre y dominio** | buyersclub.* | Confirmar marca y dominio | F0 |
 | P5 | **Zona piloto** | Una ciudad/barrio | Una ciudad, 10–20 comercios | F8 |

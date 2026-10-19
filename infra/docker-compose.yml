@@ -27,19 +27,15 @@ services:
     volumes:
       - redis-data:/data
 
-  minio:
-    image: minio/minio:latest
-    container_name: buyersclub-minio
+  storage:
+    image: motoserver/moto:latest
+    container_name: buyersclub-storage
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio12345
     ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - minio-data:/data
+      - '9000:5000'
+    environment:
+      MOTO_PORT: '5000'
+      AWS_DEFAULT_REGION: us-east-1
 
   mailpit:
     image: axllent/mailpit:latest
@@ -52,4 +48,3 @@ services:
 volumes:
   db-data:
   redis-data:
-  minio-data:

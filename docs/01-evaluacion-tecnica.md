@@ -199,7 +199,7 @@ dominio (`auth`, `businesses`, `catalog`, `orders`, `payments`, `chat`,
 Componentes:
 - **PostgreSQL 16 + PostGIS** (gestionado: Neon, Supabase o RDS).
 - **Redis** solo para rate limiting de OTP, colas (BullMQ) y cache de sesión.
-- **S3-compatible** para imágenes (R2/MinIO) con URLs prefirmadas.
+- **S3-compatible** para imágenes (R2 en producción, Moto en local) con URLs prefirmadas.
 - **Zod** para validar entrada y compartir contratos con la app.
 
 ## 9. Alternativas y disparadores de cambio

@@ -19,7 +19,7 @@ entrega en tienda o a domicilio. Compradores y vendedores en una sola app
 | Backend | **Node.js + Fastify** (API REST) + **WebSocket** para chat/estados |
 | Base de datos | **PostgreSQL 16 + PostGIS** (geolocalización por radio/distancia) |
 | ORM / validación | **Drizzle ORM** + **Zod** (esquemas compartidos en `packages/core`) |
-| Archivos (evidencia de pago, fotos) | **S3-compatible** (Cloudflare R2 o MinIO) con URLs firmadas |
+| Archivos (evidencia de pago, fotos) | **S3-compatible** (Cloudflare R2 o Moto (S3 local)) con URLs firmadas |
 | Notificaciones | **Expo Push Service** (APNs/FCM) + notificaciones locales |
 | Mapas | **Google Maps Platform** (decisión cerrada): `react-native-maps` en nativo + Maps JS en web, aislados tras una interfaz propia |
 | Autenticación | **Passwordless**: código OTP por correo; teléfono con OTP "pendiente de SMS" en fase 1 |
@@ -84,7 +84,7 @@ buyersclub/
 │   └── mobile/       Expo + expo-router (iOS, Android y web)
 ├── packages/
 │   └── core/         dinero, monedas, estados de pedido y esquemas Zod
-├── infra/            docker-compose (PostGIS, Redis, MinIO, Mailpit)
+├── infra/            docker-compose (PostGIS, Redis, S3 local (Moto), Mailpit)
 └── docs/             planificación, arquitectura y roadmap
 ```
 
@@ -107,9 +107,12 @@ Requisitos: Node 20+, Docker y (opcional) la app Expo Go o un dev build.
 export npm_config_cache="$PWD/.npm-cache"
 npm install
 
-# 2. Servicios locales (Postgres+PostGIS en 5433, Redis, MinIO, Mailpit)
+# 2. Servicios locales (Postgres+PostGIS en 5433, Redis, S3 local (Moto), Mailpit)
 #    Si no usas Docker, apunta DATABASE_URL a un Postgres con PostGIS propio.
 docker compose -f infra/docker-compose.yml up -d
+
+# El storage local es Moto (S3 en memoria): los archivos se pierden al
+# reiniciar el contenedor. En producción se usa Cloudflare R2 / S3.
 
 # 3. Variables de entorno
 cp apps/api/.env.example apps/api/.env
@@ -135,6 +138,7 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Monorepo (npm workspaces, TypeScript) | ✅ |
 | `packages/core` (dinero, monedas, estados, Zod) | ✅ Con pruebas |
 | API Fastify (health, meta, errores, rate limit, CORS) | ✅ |
+| Infra local: PostGIS, Redis, S3 (Moto) y Mailpit | ✅ `infra/docker-compose.yml` |
 | Esquema PostgreSQL/Drizzle + migración inicial | ✅ Generada (`drizzle/0000_init.sql`); aplicar con `npm run db:migrate` |
 | App Expo: bienvenida y selección cliente/vendedor | ✅ |
 | App Expo: formulario de registro (validación local) | ✅ |
@@ -145,4 +149,4 @@ npm run dev:mobile     # QR para Expo Go / dev client
 
 Las decisiones de país, moneda, mapas, backend y web están cerradas. Continuar
 la **Fase 1 — Fundaciones** con la autenticación OTP completa (signup, códigos,
-sesiones) y la primera migración aplicada.
+sesiones) sobre la base de datos ya migrada.

@@ -3,6 +3,7 @@ node_modules/
 .home/
 .expo/
 .expo-home/
+.pgdata/
 .turbo/
 dist/
 build/

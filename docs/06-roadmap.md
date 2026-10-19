@@ -34,7 +34,7 @@
 ### F1 — Fundaciones · 2–3 semanas
 **Entregables**
 - Monorepo (npm workspaces), `packages/core`, `packages/ui`, `packages/config`.
-- `docker-compose` con Postgres+PostGIS, Redis, MinIO y Mailpit.
+- `docker-compose` con Postgres+PostGIS, Redis, storage S3 (Moto) y Mailpit.
 - Esquema base con Drizzle + migraciones + seeds.
 - API Fastify con plugins (db, errores, auth, rate limit, logs) y `/health`.
 - Auth completa: signup, OTP correo, OTP teléfono (sin SMS), login, refresh,

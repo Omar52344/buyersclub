@@ -91,7 +91,7 @@ buyersclub/
 │   ├── ui/                    # design system (RN + web)
 │   └── config/                # tsconfig, eslint, prettier compartidos
 ├── infra/
-│   ├── docker-compose.yml     # postgres+postgis, redis, minio, mailpit
+│   ├── docker-compose.yml     # postgres+postgis, redis, storage S3 (Moto), mailpit
 │   └── scripts/
 └── docs/
 ```
@@ -169,7 +169,7 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 
 | Entorno | Uso | Infra |
 |---|---|---|
-| `local` | Desarrollo | Docker Compose: Postgres+PostGIS, Redis, MinIO, Mailpit |
+| `local` | Desarrollo | Docker Compose: Postgres+PostGIS, Redis, Moto (S3 local), Mailpit |
 | `staging` | QA, builds internas (EAS internal) | Servicios gestionados pequeños + datos sintéticos |
 | `production` | Usuarios reales | Postgres gestionado con backups, API en 2 instancias, bucket R2/S3 |
 
