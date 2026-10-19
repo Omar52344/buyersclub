@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,12 +20,14 @@ import {
   createBranch,
   createBusiness,
   createProduct,
+  getBranchQr,
   getCategories,
   getMyBusinesses,
   getProducts,
   setBranchHours,
   setBranchOpen,
   setProductBranches,
+  type BranchQr,
   type BranchSummary,
   type Business,
   type Category,
@@ -578,6 +581,12 @@ export default function VendorScreen() {
                       Mínimo {money(branch.minOrderCents, business.currency)}
                     </Text>
                   </View>
+                  <BranchQrPreview
+                    branchId={branch.id}
+                    onPress={() =>
+                      router.push({ pathname: '/branch-qr', params: { id: branch.id } })
+                    }
+                  />
                 </View>
               ))
             )}
@@ -1033,6 +1042,49 @@ function TextField({
   );
 }
 
+function BranchQrPreview({
+  branchId,
+  onPress,
+}: {
+  branchId: string;
+  onPress: () => void;
+}) {
+  const [qr, setQr] = useState<BranchQr | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getBranchQr(branchId)
+      .then((response) => {
+        if (active) {
+          setQr(response);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [branchId]);
+
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.qrPreview}>
+      {qr ? (
+        <Image source={{ uri: qr.qrDataUrl }} style={styles.qrImage} />
+      ) : (
+        <View style={styles.qrPlaceholder}>
+          <ActivityIndicator color={colors.brand} size="small" />
+        </View>
+      )}
+      <View style={styles.qrText}>
+        <Text style={styles.qrLabel}>QR para pedir</Text>
+        <Text style={styles.qrHint}>
+          Compártelo en esta sede; los clientes piden sin registrarse.
+        </Text>
+      </View>
+      <Text style={styles.link}>Ampliar</Text>
+    </Pressable>
+  );
+}
+
 function Chip({
   label,
   selected,
@@ -1204,6 +1256,29 @@ const styles = StyleSheet.create({
   bulkButtonTextSecondary: { color: colors.text, fontSize: 12, fontWeight: '700' },
   warningText: { color: '#B45309', fontSize: 12, lineHeight: 18, fontWeight: '600' },
   disabled: { opacity: 0.6 },
+  qrPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.bg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  qrImage: { width: 64, height: 64, borderRadius: 6, backgroundColor: '#FFFFFF' },
+  qrPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrText: { flex: 1, gap: 2 },
+  qrLabel: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  qrHint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   price: { color: colors.text, fontWeight: '800', fontSize: 15 },
   field: { gap: 6 },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },

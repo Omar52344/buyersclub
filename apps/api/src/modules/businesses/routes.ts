@@ -11,6 +11,7 @@ import { requireUserId } from '../../lib/auth-guard';
 import {
   createBranch,
   createBusiness,
+  getBranchQr,
   listBranches,
   listMyBusinesses,
   setBranchHours,
@@ -60,6 +61,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const userId = await requireUserId(request);
     const body = branchHoursUpdateSchema.parse(request.body);
     return { branches: await setBranchHours(userId, request.params.id, body) };
+  });
+
+  app.get<{ Params: { id: string } }>('/branches/:id/qr', async (request) => {
+    const userId = await requireUserId(request);
+    return { qr: await getBranchQr(userId, request.params.id) };
   });
 
   app.post<{ Params: { id: string } }>('/branches/:id/open', async (request) => {

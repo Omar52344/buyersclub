@@ -17,6 +17,7 @@ import { fileRoutes } from './modules/files/routes';
 import { notificationRoutes } from './modules/notifications/routes';
 import { orderRoutes } from './modules/orders/routes';
 import { paymentRoutes } from './modules/payments/routes';
+import { publicRoutes } from './modules/public/routes';
 import { realtimeRoutes } from './modules/realtime/routes';
 import { healthRoutes } from './routes/health';
 import { metaRoutes } from './routes/meta';
@@ -98,6 +99,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(discoveryRoutes, { prefix: '/v1' });
   await app.register(orderRoutes, { prefix: '/v1' });
   await app.register(paymentRoutes, { prefix: '/v1' });
+  await app.register(publicRoutes, { prefix: '/v1' });
   await app.register(chatRoutes, { prefix: '/v1' });
   await app.register(notificationRoutes, { prefix: '/v1' });
   await app.register(realtimeRoutes, { prefix: '/v1' });

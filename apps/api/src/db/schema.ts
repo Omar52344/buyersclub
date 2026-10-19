@@ -248,6 +248,7 @@ export const branches = pgTable(
     prepTimeMinutes: integer('prep_time_minutes').notNull().default(20),
     deliveryEtaMinutes: integer('delivery_eta_minutes').notNull().default(20),
     status: branchStatusEnum('status').notNull().default('active'),
+    qrToken: text('qr_token').notNull().unique(),
     ...timestamps(),
   },
   (table) => [
@@ -428,6 +429,23 @@ export const orders = pgTable(
     index('orders_buyer_idx').on(table.buyerUserId, table.createdAt),
     index('orders_business_idx').on(table.businessId, table.createdAt),
     check('orders_currency_check', sql`${table.currency} in ('COP','USD')`),
+  ],
+);
+
+export const guestOrderThrottles = pgTable(
+  'guest_order_throttles',
+  {
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'cascade' }),
+    phoneHash: text('phone_hash').notNull(),
+    lastOrderAt: timestamp('last_order_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.branchId, table.phoneHash] }),
+    index('guest_order_throttles_last_idx').on(table.lastOrderAt),
   ],
 );
 

@@ -233,7 +233,17 @@ export async function getOrderDetail(userId: string, orderId: string) {
   return buildDetail(row, viewer, userId);
 }
 
-export async function createOrder(buyerUserId: string, input: OrderCreateInput) {
+export interface OrderContact {
+  name: string;
+  phone: string;
+}
+
+export async function createOrder(
+  buyerUserId: string,
+  input: OrderCreateInput,
+  contact?: OrderContact,
+  options?: { skipConversation?: boolean },
+) {
   const [branch] = await db
     .select({
       id: branches.id,
@@ -301,6 +311,8 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
   if (!buyerRow) {
     throw new AppError('UNAUTHORIZED', 'Sesión no válida.', 401);
   }
+  const buyerName = contact?.name ?? buyerRow.fullName ?? buyerRow.email;
+  const buyerPhone = contact?.phone ?? buyerRow.phone;
 
   const quantities = new Map<string, number>();
   for (const item of input.items) {
@@ -430,8 +442,8 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
           .values({
             userId: buyerUserId,
             label: null,
-            recipientName: address.recipientName ?? buyerRow.fullName,
-            phone: address.phone ?? buyerRow.phone,
+            recipientName: address.recipientName ?? buyerName,
+            phone: address.phone ?? buyerPhone,
             line1: address.line1,
             line2: address.line2 ?? null,
             city: address.city,
@@ -445,8 +457,8 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
           line1: address.line1,
           line2: address.line2 ?? null,
           city: address.city,
-          recipientName: address.recipientName ?? buyerRow.fullName,
-          phone: address.phone ?? buyerRow.phone,
+          recipientName: address.recipientName ?? buyerName,
+          phone: address.phone ?? buyerPhone,
           notes: address.notes ?? null,
           lat: address.lat ?? null,
           lng: address.lng ?? null,
@@ -476,8 +488,8 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
         discountCents: 0,
         totalCents,
         currency: branch.currency,
-        buyerName: buyerRow.fullName ?? buyerRow.email,
-        buyerPhone: buyerRow.phone,
+        buyerName,
+        buyerPhone,
         deliveryAddressId: addressId,
         deliveryAddressSnapshot: snapshot,
         notes: input.notes ?? null,
@@ -509,15 +521,17 @@ export async function createOrder(buyerUserId: string, input: OrderCreateInput) 
       note: 'Pedido creado',
     });
 
-    await tx
-      .insert(conversations)
-      .values({
-        orderId: order.id,
-        buyerUserId,
-        businessId: branch.businessId,
-        branchId: branch.id,
-      })
-      .onConflictDoNothing();
+    if (!options?.skipConversation) {
+      await tx
+        .insert(conversations)
+        .values({
+          orderId: order.id,
+          buyerUserId,
+          businessId: branch.businessId,
+          branchId: branch.id,
+        })
+        .onConflictDoNothing();
+    }
 
     return order.id;
   });

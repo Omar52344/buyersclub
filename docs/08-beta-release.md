@@ -23,7 +23,8 @@ Ya implementado para la revisión de tiendas:
 |---|---|---|
 | 1 | Cuenta Apple Developer (99 USD/año) y Google Play (25 USD) | Producto |
 | 2 | Proyecto EAS y `EAS_PROJECT_ID` | Producto |
-| 3 | Dominio, correo de soporte y URLs públicas de términos/privacidad | Producto |
+| 3 | Dominio, correo de soporte, URLs públicas de términos/privacidad y `PUBLIC_APP_URL` | Producto |
+| 3b | Universal links / app links para que el QR abra la app instalada | Producto |
 | 4 | Revisión legal de los textos | Legal |
 | 5 | SMS real (fase posterior) | Producto |
 | 6 | Zona piloto y comercios aliados | Negocio |
@@ -47,6 +48,7 @@ S3_ENDPOINT=…
 S3_BUCKET=…
 S3_ACCESS_KEY_ID=…
 S3_SECRET_ACCESS_KEY=…
+PUBLIC_APP_URL=https://app.tudominio.com
 EXPOSE_DEV_CODES=false
 ```
 
@@ -129,6 +131,7 @@ Recomendaciones:
 - [ ] Buckets/objetos privados y CORS restringido.
 - [ ] Key de Google restringida por plataforma y con alertas de costo.
 - [ ] Push probado en dispositivo real (dev build) con `EAS_PROJECT_ID`.
+- [ ] QR de una sucursal probado en navegador y app; `PUBLIC_APP_URL` apunta al dominio público.
 - [ ] Términos y privacidad publicados en URL pública.
 - [ ] Eliminación de cuenta probada en la build de producción.
 - [ ] Capturas y ficha listas en App Store Connect y Play Console.

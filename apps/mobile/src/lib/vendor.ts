@@ -209,3 +209,19 @@ export async function bulkSetBranchProducts(
   );
   return response.updated;
 }
+
+export interface BranchQr {
+  branchId: string;
+  branchName: string;
+  token: string;
+  url: string;
+  appUrl: string;
+  qrDataUrl: string;
+}
+
+export async function getBranchQr(branchId: string): Promise<BranchQr> {
+  const response = await authedRequest<{ qr: BranchQr }>(
+    `/v1/branches/${branchId}/qr`,
+  );
+  return response.qr;
+}

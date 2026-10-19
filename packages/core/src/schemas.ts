@@ -245,6 +245,24 @@ export const orderCreateSchema = z
     },
   );
 
+export const guestOrderCreateSchema = z
+  .object({
+    name: z.string().min(2).max(80),
+    phone: z.string().min(7).max(25),
+    fulfillment: z.enum(['delivery', 'pickup']).default('pickup'),
+    paymentMethod: z.enum(['cash', 'card_terminal']).default('cash'),
+    items: z.array(orderItemSchema).min(1).max(50),
+    deliveryAddress: deliveryAddressSchema.optional(),
+    notes: z.string().max(300).optional(),
+  })
+  .refine(
+    (value) => value.fulfillment !== 'delivery' || Boolean(value.deliveryAddress),
+    {
+      message: 'La entrega a domicilio requiere una dirección',
+      path: ['deliveryAddress'],
+    },
+  );
+
 export const orderStatusUpdateSchema = z.object({
   status: z.enum([
     'accepted',
@@ -290,6 +308,7 @@ export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 export type ProductBranchesUpdateInput = z.infer<typeof productBranchesUpdateSchema>;
 export type BranchProductsBulkInput = z.infer<typeof branchProductsBulkSchema>;
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
+export type GuestOrderCreateInput = z.infer<typeof guestOrderCreateSchema>;
 export type OrderStatusUpdateInput = z.infer<typeof orderStatusUpdateSchema>;
 export type OrderCancelInput = z.infer<typeof orderCancelSchema>;
 export type DeliveryAddressInput = z.infer<typeof deliveryAddressSchema>;

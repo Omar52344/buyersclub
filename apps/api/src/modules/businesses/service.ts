@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import QRCode from 'qrcode';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   BranchCreateInput,
@@ -21,6 +22,7 @@ import {
 } from '../../db/schema';
 import { AppError } from '../../errors';
 import { geocodeAddress } from '../../lib/geocode';
+import { config } from '../../config';
 
 type BusinessRow = typeof businesses.$inferSelect;
 type BranchRow = typeof branches.$inferSelect;
@@ -235,6 +237,7 @@ export async function createBranch(
       prepTimeMinutes: input.prepTimeMinutes,
       deliveryEtaMinutes: input.deliveryEtaMinutes,
       status: 'active',
+      qrToken: randomBytes(9).toString('hex'),
     })
     .returning();
 
@@ -262,6 +265,34 @@ export async function createBranch(
   }
 
   return branch;
+}
+
+export async function getBranchQr(userId: string, branchId: string) {
+  const { branch } = await assertBranchOwner(userId, branchId);
+  let token = branch.qrToken;
+
+  if (!token) {
+    token = randomBytes(9).toString('hex');
+    await db.update(branches).set({ qrToken: token }).where(eq(branches.id, branch.id));
+  }
+
+  const baseUrl = config.PUBLIC_APP_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/qr?token=${encodeURIComponent(token)}`;
+  const appUrl = `buyersclub://qr?token=${encodeURIComponent(token)}`;
+  const qrDataUrl = await QRCode.toDataURL(url, {
+    margin: 1,
+    width: 512,
+    color: { dark: '#0F172A', light: '#FFFFFF' },
+  });
+
+  return {
+    branchId: branch.id,
+    branchName: branch.name,
+    token,
+    url,
+    appUrl,
+    qrDataUrl,
+  };
 }
 
 export async function listBranches(userId: string, businessId: string) {

@@ -151,6 +151,7 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 2 API: empresa, sucursales, horarios, catálogo y overrides | ✅ Probada de punta a punta |
 | Fase 2 App: pantalla "Mi negocio" (empresa, sucursales, horarios y catálogo) | ✅ Incluida en el build web |
 | Catálogo por sucursal: selección explícita al crear y activación masiva | ✅ Probado |
+| Pedido por QR sin registro, con nombre/celular y límite de 1/min | ✅ Probado |
 | Fase 3 API: PostGIS, radio, filtros y abierto/cerrado en servidor | ✅ Probada con datos reales |
 | Fase 3 App: explorar tiendas y ficha pública con catálogo | ✅ En el build web |
 | Mapa visual: Maps JS en web y `react-native-maps` en nativo | ✅ Configurado (keys en `.env`) |
@@ -188,6 +189,23 @@ auditoría, Helmet y limpieza periódica.
   (`http://localhost:8081/*` y tu dominio), el package Android
   (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
+
+### QR y pedidos invitados
+
+- Cada sucursal tiene un QR propio en **Mi negocio** con enlace
+  `PUBLIC_APP_URL/qr?token=…`. El QR se puede ampliar, compartir o abrir como
+  cliente.
+- Al escanearlo, el cliente pide **sin crear cuenta**: solo nombre y celular.
+  Puede elegir recogida o domicilio (si la sucursal lo permite) y paga en la
+  tienda.
+- El servidor exige **60 segundos** entre pedidos del mismo teléfono en la misma
+  sucursal (límite atómico en base de datos) y 30 pedidos/minuto por IP.
+- `PUBLIC_APP_URL` en `apps/api/.env` define el dominio del enlace. En producción
+  debe ser el dominio público; en local, `http://localhost:8081`. En hosting
+  estático, asegura que `/qr` resuelva a `qr.html` (clean URLs).
+- El enlace web funciona en cualquier navegador. La app tiene la ruta `/qr` y el
+  deep link `buyersclub://qr?token=…`; para que el QR abra la app automáticamente
+  hacen falta universal links (Apple) y app links (Android) con el dominio.
 
 ### Push y archivos
 

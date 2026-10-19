@@ -18,6 +18,7 @@ const envSchema = z.object({
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   UPLOAD_DIR: z.string().default('.uploads'),
   DEFAULT_TIMEZONE: z.string().default('America/Bogota'),
+  PUBLIC_APP_URL: z.string().default('http://localhost:8081'),
   EXPO_PUSH_URL: z.string().default('https://exp.host/--/api/v2/push/send'),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('us-east-1'),
@@ -46,5 +47,10 @@ if (config.NODE_ENV === 'production') {
   }
   if (config.CORS_ORIGIN === '*') {
     console.warn('[config] CORS abierto en producción; restringe CORS_ORIGIN.');
+  }
+  if (/localhost|127\.0\.0\.1/.test(config.PUBLIC_APP_URL)) {
+    console.warn(
+      '[config] PUBLIC_APP_URL apunta a localhost; configura el dominio público para los QR.',
+    );
   }
 }

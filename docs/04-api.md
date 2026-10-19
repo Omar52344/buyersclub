@@ -171,6 +171,24 @@ con fila en `branch_products` y `isAvailable = true`. `shareWithAllBranches: tru
 solo se usa para heredar el producto en sucursales nuevas; al editar las
 sucursales de un producto se desactiva esa herencia.
 
+## 5.1 QR y pedidos invitados
+
+| Método | Ruta | Actor | Descripción |
+|---|---|---|---|
+| GET | `/branches/:id/qr` | vendedor | Devuelve `{token, url, appUrl, qrDataUrl}` de la sucursal |
+| GET | `/public/qr/:token` | público | Sucursal, catálogo disponible y enlace; no requiere sesión |
+| POST | `/public/qr/:token/orders` | público | Pedido invitado `{name, phone, fulfillment, paymentMethod, items, deliveryAddress?, notes?}` |
+
+El pedido invitado crea un usuario ligero sin contraseña (correo y teléfono
+sintéticos) para conservar el historial, pero el contacto real queda en el
+pedido. Solo admite `cash` o `card_terminal`; no crea chat ni permite subir
+comprobante. La respuesta incluye el código y el total para mostrar la
+confirmación.
+
+**Límite:** una fila atómica en `guest_order_throttles` impide más de un pedido
+del mismo teléfono en la misma sucursal durante 60 segundos. Además, la ruta
+tiene un límite de 30 peticiones/minuto por IP.
+
 ## 6. Pedidos
 
 | Método | Ruta | Actor | Descripción |
