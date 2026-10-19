@@ -222,12 +222,13 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
   mantener dos UIs.
 
 ### ADR-003 — Google Maps Platform, aislado tras una interfaz
-- **Decisión**: usar Google Maps (`react-native-maps` en nativo, Maps JS +
-  Geocoding en web) encapsulado en `packages/ui/map` con implementaciones
-  `.native.tsx` y `.web.tsx`.
+- **Decisión**: Google Maps con `react-native-maps` en nativo y Maps JS en web,
+  encapsulado en `apps/mobile/src/components/branch-map` (implementaciones
+  `.native.tsx` y `.tsx`) y Geocoding en el servidor. Las keys viven en `.env`;
+  `app.config.js` inyecta las nativas en el build.
 - **Consecuencias**: integración y geocodificación resueltas; el costo por carga
-  se monitorea. Cambiar a MapLibre/OSM sigue siendo un cambio localizado si el
-  costo se dispara.
+  se monitorea. Las keys deben restringirse por API y por plataforma. Cambiar a
+  MapLibre/OSM sigue siendo un cambio localizado si el costo se dispara.
 
 ### ADR-004 — Monolito modular con REST + WebSocket
 - **Decisión**: un proceso API, un proceso worker, módulos por dominio.

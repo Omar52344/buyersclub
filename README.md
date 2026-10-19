@@ -150,18 +150,28 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Fase 2 App: pantalla "Mi negocio" (empresa, sucursales, horarios y catálogo) | ✅ Incluida en el build web |
 | Fase 3 API: PostGIS, radio, filtros y abierto/cerrado en servidor | ✅ Probada con datos reales |
 | Fase 3 App: explorar tiendas y ficha pública con catálogo | ✅ En el build web |
-| Mapa visual con Google Maps | ⏳ Requiere `GOOGLE_MAPS_API_KEY` |
+| Mapa visual: Maps JS en web y `react-native-maps` en nativo | ✅ Configurado (keys en `.env`) |
 | Pedidos, chat, pagos y dashboards | ⏳ Fases 4–6 |
 
 ## 9. Próximo paso
 
-La **Fase 3 quedó implementada en su capa de datos**: PostGIS con índice GiST,
-búsqueda por radio, filtros, distancia, estado abierto/cerrado calculado en el
-servidor (interruptor manual + horario + excepciones + zona horaria), ficha
-pública y catálogo. La app ya permite explorar tiendas y ver su catálogo.
+La **Fase 3 quedó completa**: PostGIS con índice GiST, búsqueda por radio,
+filtros, distancia, estado abierto/cerrado calculado en el servidor (interruptor
+manual + horario + excepciones + zona horaria), ficha pública, catálogo y mapa
+visual en web y nativo.
 
-> El **mapa visual** se activa al configurar `GOOGLE_MAPS_API_KEY`; sin ella la
-> exploración funciona en modo lista y la geocodificación usa Nominatim.
+### Google Maps: configuración y seguridad
+
+- `apps/api/.env` → `GOOGLE_MAPS_API_KEY` para geocodificación en el servidor.
+- `apps/mobile/.env` → `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` para Maps JS (web) y los
+  SDK nativos.
+- [`app.config.js`](apps/mobile/app.config.js) inyecta la key en Android/iOS sin
+  escribirla en el repositorio. Las keys **no** se versionan.
+- Restringe la key en Google Cloud: habilita solo **Maps JavaScript API, Maps SDK
+  for Android, Maps SDK for iOS y Geocoding API**; limita referrers web
+  (`http://localhost:8081/*` y tu dominio), el package Android
+  (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
+- Rota cualquier key que se haya compartido por un canal inseguro.
 
 Sigue la **Fase 4 — Pedidos**: carrito, checkout (domicilio/recogida), máquina
-de estados y tracker. No depende de la API key del mapa.
+de estados y tracker.

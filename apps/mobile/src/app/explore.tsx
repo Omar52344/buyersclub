@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BranchMap } from '../components/branch-map';
 import { ApiError } from '../lib/api';
 import { findNearby, type CurrencyCode, type NearbyBranch } from '../lib/discovery';
 import { getCategories, type Category } from '../lib/vendor';
@@ -132,13 +133,18 @@ export default function ExploreScreen() {
           </Text>
         </View>
 
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapTitle}>Mapa de comercios</Text>
-          <Text style={styles.mapText}>
-            La vista de mapa se activa al configurar la API key de Google Maps. La lista de abajo
-            ya usa PostGIS: calcula distancias y el estado abierto/cerrado desde el servidor.
-          </Text>
-        </View>
+        <BranchMap
+          branches={items.map((branch) => ({
+            id: branch.id,
+            name: branch.name,
+            lat: branch.location.lat,
+            lng: branch.location.lng,
+            isOpen: branch.isOpen,
+          }))}
+          onSelect={(id) => router.push({ pathname: '/store', params: { id } })}
+          height={260}
+        />
+        <Text style={styles.mapHint}>Toca un pin para abrir la tienda.</Text>
 
         <ScrollView
           horizontal
@@ -322,6 +328,7 @@ const styles = StyleSheet.create({
   },
   mapTitle: { color: colors.brandDark, fontWeight: '800', fontSize: 14 },
   mapText: { color: colors.brandDark, fontSize: 12, lineHeight: 18 },
+  mapHint: { color: colors.muted, fontSize: 12, textAlign: 'center' },
   filterRow: { gap: spacing.sm, paddingVertical: 2 },
   chip: {
     borderWidth: 1,

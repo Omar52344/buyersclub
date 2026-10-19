@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BranchMap } from '../components/branch-map';
 import { ApiError } from '../lib/api';
 import { getPublicBranch, type CurrencyCode, type PublicBranch } from '../lib/discovery';
 import { colors, radius, spacing } from '../theme';
@@ -139,6 +140,19 @@ export default function StoreScreen() {
             </Text>
           </View>
         ) : null}
+
+        <BranchMap
+          branches={[
+            {
+              id: branch.id,
+              name: branch.name,
+              lat: branch.location.lat,
+              lng: branch.location.lng,
+              isOpen: branch.isOpen,
+            },
+          ]}
+          height={180}
+        />
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Entrega</Text>

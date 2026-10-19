@@ -9,9 +9,11 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.buyersclub.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.buyersclub.app",
       "adaptiveIcon": {
         "backgroundColor": "#0F766E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

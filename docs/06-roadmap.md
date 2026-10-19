@@ -1,8 +1,8 @@
 # 06 — Roadmap y estimación
 
-> **Estado de implementación:** F1 ✅, F2 ✅ y la capa de datos de F3 ✅
-> (autenticación, empresa, sucursales, catálogo, descubrimiento PostGIS y estado
-> abierto/cerrado). El mapa visual espera la API key de Google; F4 en curso.
+> **Estado de implementación:** F1 ✅, F2 ✅ y F3 ✅ (autenticación, empresa,
+> sucursales, catálogo, descubrimiento PostGIS, estado abierto/cerrado y mapa
+> web/nativo con Google Maps). F4 siguiente.
 
 ## 1. Supuestos de estimación
 
