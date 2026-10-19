@@ -104,6 +104,12 @@ activas.
 | GET | `/discovery/branches/:id` | Ficha pública: sucursal, horario, estado, catálogo disponible |
 | GET | `/discovery/search` | Búsqueda por texto de tiendas y productos |
 
+> El endpoint es **público** y calcula `isOpen` en el servidor combinando el
+> interruptor manual, el horario por día, las excepciones y la zona horaria de la
+> sucursal. `openNow=true` se filtra después del cálculo; `distanceMeters` sale de
+> PostGIS (`ST_DWithin` + índice GiST). El mapa visual usa Google Maps cuando
+> `GOOGLE_MAPS_API_KEY` está configurada.
+
 Respuesta de `/discovery/branches`:
 ```json
 {

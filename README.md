@@ -148,15 +148,20 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | App Expo: registro/login con contraseña, código alternativo y recuperación | ✅ |
 | Fase 2 API: empresa, sucursales, horarios, catálogo y overrides | ✅ Probada de punta a punta |
 | Fase 2 App: pantalla "Mi negocio" (empresa, sucursales, horarios y catálogo) | ✅ Incluida en el build web |
-| Descubrimiento en mapa, pedidos, chat, dashboards | ⏳ Fases 3–6 |
+| Fase 3 API: PostGIS, radio, filtros y abierto/cerrado en servidor | ✅ Probada con datos reales |
+| Fase 3 App: explorar tiendas y ficha pública con catálogo | ✅ En el build web |
+| Mapa visual con Google Maps | ⏳ Requiere `GOOGLE_MAPS_API_KEY` |
+| Pedidos, chat, pagos y dashboards | ⏳ Fases 4–6 |
 
 ## 9. Próximo paso
 
-La **Fase 2 quedó cerrada**: cada vendedor crea su empresa (COP/USD), sucursales
-con horarios y estado manual, y un catálogo compartido con precios por sucursal.
-Sigue la **Fase 3 — Descubrimiento**: mapa con Google Maps, ficha pública de la
-tienda y cálculo de abierto/cerrado en el servidor.
+La **Fase 3 quedó implementada en su capa de datos**: PostGIS con índice GiST,
+búsqueda por radio, filtros, distancia, estado abierto/cerrado calculado en el
+servidor (interruptor manual + horario + excepciones + zona horaria), ficha
+pública y catálogo. La app ya permite explorar tiendas y ver su catálogo.
 
-> Para renderizar el mapa hace falta la `GOOGLE_MAPS_API_KEY` (Maps SDK +
-> Geocoding). Las coordenadas de las sucursales ya se guardan; sin la key, el
-> alta de sucursal geocodifica con Nominatim en desarrollo.
+> El **mapa visual** se activa al configurar `GOOGLE_MAPS_API_KEY`; sin ella la
+> exploración funciona en modo lista y la geocodificación usa Nominatim.
+
+Sigue la **Fase 4 — Pedidos**: carrito, checkout (domicilio/recogida), máquina
+de estados y tracker. No depende de la API key del mapa.

@@ -106,6 +106,20 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/explore')}
+          style={({ pressed }) => [styles.exploreCta, pressed && styles.exploreCtaPressed]}
+        >
+          <View style={styles.vendorCtaText}>
+            <Text style={styles.exploreTitle}>Explorar tiendas cerca</Text>
+            <Text style={styles.exploreSubtitle}>
+              Catálogo, distancia y estado abierto en tiempo real
+            </Text>
+          </View>
+          <Text style={styles.exploreArrow}>→</Text>
+        </Pressable>
+
         {isVendor ? (
           <Pressable
             accessibilityRole="button"
@@ -255,6 +269,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
+  exploreCta: {
+    backgroundColor: colors.brandSoft,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  exploreCtaPressed: { opacity: 0.9 },
+  exploreTitle: { color: colors.brandDark, fontSize: 17, fontWeight: '800' },
+  exploreSubtitle: { color: colors.brandDark, fontSize: 13, opacity: 0.85 },
+  exploreArrow: { color: colors.brandDark, fontSize: 22, fontWeight: '700' },
   vendorCtaPressed: { backgroundColor: colors.brandDark },
   vendorCtaText: { flex: 1, gap: 2 },
   vendorCtaTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },

@@ -46,6 +46,14 @@ export default function WelcomeScreen() {
 
         <Pressable
           accessibilityRole="button"
+          onPress={() => router.push('/explore')}
+          style={styles.exploreLink}
+        >
+          <Text style={styles.exploreText}>Ver tiendas cerca sin cuenta</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
           onPress={() => router.push('/auth?mode=login')}
           style={styles.loginLink}
         >
@@ -133,6 +141,16 @@ const styles = StyleSheet.create({
   loginLink: {
     alignSelf: 'center',
     padding: spacing.sm,
+  },
+  exploreLink: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  exploreText: {
+    color: colors.brand,
+    fontWeight: '700',
+    fontSize: 14,
   },
   loginText: {
     color: colors.muted,
