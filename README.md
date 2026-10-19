@@ -153,15 +153,20 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | Mapa visual: Maps JS en web y `react-native-maps` en nativo | ✅ Configurado (keys en `.env`) |
 | Fase 4 API: pedidos, totales en servidor, estados, tracker y cancelación | ✅ Probada de punta a punta |
 | Fase 4 App: carrito, checkout, mis pedidos, detalle y pedidos del vendedor | ✅ En el build web |
-| Chat, evidencia de pago, notificaciones y dashboards | ⏳ Fases 5–6 |
+| Fase 5 API: archivos privados, comprobante, validación y chat con imágenes | ✅ Probada de punta a punta |
+| Fase 5 App: chat por pedido, envío de imágenes y comprobante con validación | ✅ En el build web |
+| Notificaciones push, dashboards y endurecimiento | ⏳ Fases 6–7 |
 
 ## 9. Próximo paso
 
-La **Fase 4 quedó completa**: carrito persistente, checkout con domicilio o
-recogida, dirección, medios de pago, recálculo de precios y totales en el
-servidor, validación de sucursal abierta y pedido mínimo, máquina de estados,
-tracker con historial, cancelación del comprador y avance de estados desde la
-pantalla de pedidos del vendedor.
+La **Fase 5 quedó completa**: chat por pedido con texto e imágenes, comprobante
+de pago privado con enlace firmado, validación o rechazo por el vendedor (al
+validar, el pedido pasa a `accepted`) y reenvío tras un rechazo.
+
+> El chat usa *polling* cada 4 segundos en esta fase; el WebSocket y las
+> notificaciones push quedan para F7. Las imágenes se guardan en `.uploads`
+> (disco local, ignorado por git) en desarrollo; el cambio a S3/R2 es parte del
+> endurecimiento previo a producción.
 
 ### Google Maps: configuración y seguridad
 
@@ -176,5 +181,5 @@ pantalla de pedidos del vendedor.
   (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
 
-Sigue la **Fase 5 — Chat y pago**: mensajes por pedido, imágenes, comprobante de
-pago y validación del vendedor.
+Sigue la **Fase 6 — Dashboards**: consolidado de ventas por sucursal con filtros
+de fecha para el vendedor, e indicadores de compras para el comprador.

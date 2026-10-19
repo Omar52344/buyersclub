@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBadge } from '../components/status-badge';
-import { ApiError } from '../lib/api';
+import { API_URL, ApiError } from '../lib/api';
+import { pickImage, uploadImage } from '../lib/files';
 import { ORDER_STATUS_LABELS } from '../lib/order-labels';
 import {
   cancelOrder,
@@ -19,6 +21,7 @@ import {
   type OrderDetail,
   type OrderStatus,
 } from '../lib/orders';
+import { submitPaymentEvidence } from '../lib/payments';
 import { colors, radius, spacing } from '../theme';
 
 function money(cents: number, currency: 'COP' | 'USD'): string {
@@ -49,6 +52,7 @@ export default function OrderScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -92,6 +96,31 @@ export default function OrderScreen() {
       setError(caught instanceof ApiError ? caught.message : 'No pudimos cancelar el pedido.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleEvidence() {
+    if (!order) {
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const uri = await pickImage();
+      if (!uri) {
+        return;
+      }
+      const file = await uploadImage(uri);
+      const updated = await submitPaymentEvidence(
+        order.id,
+        file.id,
+        'Comprobante de transferencia',
+      );
+      setOrder(updated);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'No pudimos subir el comprobante.');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -216,19 +245,67 @@ export default function OrderScreen() {
               pedido esté listo.
             </Text>
           )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Pago</Text>
           <Text style={styles.muted}>
-            Pago: {order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'card_terminal' ? 'Datáfono' : 'Otro'} ·{' '}
-            {order.paymentStatus === 'validated' ? 'validado' : 'pendiente'}
+            {paymentMethodLabel(order.paymentMethod)} · {paymentStatusLabel(order.paymentStatus)}
           </Text>
+          {order.payment?.evidenceUrl ? (
+            <Image
+              source={{ uri: `${API_URL}${order.payment.evidenceUrl}` }}
+              style={styles.evidenceImage}
+            />
+          ) : null}
+          {order.payment?.note ? (
+            <Text style={styles.muted}>Nota: {order.payment.note}</Text>
+          ) : null}
+          {order.payment?.rejectionReason ? (
+            <Text style={styles.errorText}>
+              Rechazado: {order.payment.rejectionReason}
+            </Text>
+          ) : null}
+          {order.viewer === 'buyer' &&
+          order.paymentMethod === 'transfer' &&
+          (order.paymentStatus === 'pending' || order.paymentStatus === 'rejected') &&
+          !FINAL.includes(order.status) ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={uploading}
+              onPress={handleEvidence}
+              style={[styles.evidenceButton, uploading && styles.disabled]}
+            >
+              {uploading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.evidenceButtonText}>
+                  {order.paymentStatus === 'rejected'
+                    ? 'Subir nuevo comprobante'
+                    : 'Subir comprobante de pago'}
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
+          {order.paymentStatus === 'evidence_submitted' ? (
+            <Text style={styles.muted}>Comprobante en revisión por la tienda.</Text>
+          ) : null}
         </View>
 
         {order.conversationId ? (
-          <View style={styles.chatCard}>
-            <Text style={styles.chatTitle}>Chat con la tienda</Text>
-            <Text style={styles.muted}>
-              El chat y el comprobante de pago llegan en la Fase 5.
-            </Text>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.push({ pathname: '/chat', params: { id: order.conversationId } })
+            }
+            style={styles.chatCard}
+          >
+            <View style={styles.chatText}>
+              <Text style={styles.chatTitle}>Chat con la tienda</Text>
+              <Text style={styles.muted}>Coordina la entrega o el pago</Text>
+            </View>
+            <Text style={styles.chatArrow}>→</Text>
+          </Pressable>
         ) : null}
 
         {order.canCancel ? (
@@ -268,8 +345,36 @@ export default function OrderScreen() {
   );
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
+
+function paymentMethodLabel(method: string): string {
+  switch (method) {
+    case 'cash':
+      return 'Efectivo';
+    case 'card_terminal':
+      return 'Datáfono';
+    case 'transfer':
+      return 'Transferencia';
+    default:
+      return 'Otro';
+  }
+}
+
+function paymentStatusLabel(status: string): string {
+  switch (status) {
+    case 'validated':
+      return 'pago validado';
+    case 'evidence_submitted':
+      return 'comprobante en revisión';
+    case 'rejected':
+      return 'pago rechazado';
+    case 'refunded':
+      return 'reembolsado';
+    default:
+      return 'pago pendiente';
+  }
+}
+
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {  return (
     <View style={styles.row}>
       <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
       <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
@@ -342,8 +447,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandSoft,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
+  chatText: { flex: 1, gap: 2 },
+  chatArrow: { color: colors.brandDark, fontSize: 20, fontWeight: '700' },
+  evidenceImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    resizeMode: 'contain',
+  },
+  evidenceButton: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.pill,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  evidenceButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   chatTitle: { color: colors.brandDark, fontSize: 14, fontWeight: '800' },
   cancelButton: {
     borderWidth: 1,

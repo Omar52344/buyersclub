@@ -179,9 +179,9 @@ compartidos.
 | POST | `/orders/:id/cancel` | comprador | Solo en `pending`/`awaiting_payment` |
 | POST | `/orders/:id/status` | vendedor | Transición validada |
 | GET | `/businesses/:id/orders` | vendedor | Pedidos de la empresa, `?status=` |
-| POST | `/orders/:id/payment-evidence` | comprador | *(Fase 5)* `{fileId, note?}` |
-| POST | `/payments/:id/validate` | vendedor | *(Fase 5)* Marca pago validado |
-| POST | `/payments/:id/reject` | vendedor | *(Fase 5)* `{reason}` |
+| POST | `/orders/:id/payment-evidence` | comprador | `{fileId, note?}` |
+| POST | `/payments/:id/validate` | vendedor | Marca pago validado; el pedido pasa a `accepted` |
+| POST | `/payments/:id/reject` | vendedor | `{reason}` |
 
 `POST /orders`:
 ```json
@@ -210,7 +210,7 @@ no ofrece el medio elegido (`422`), no alcanza el mínimo (`422 MIN_ORDER_NOT_ME
 o un producto no está disponible (`422 PRODUCT_UNAVAILABLE`).
 
 Con `paymentMethod = transfer` el pedido nace en `awaiting_payment`; el vendedor
-no puede aceptarlo hasta validar la evidencia (Fase 5).
+no puede aceptarlo hasta validar la evidencia.
 
 Transiciones permitidas (`POST /orders/:id/status`):
 
@@ -233,7 +233,7 @@ Cualquier otra transición devuelve `422 ORDER_STATE_INVALID`.
 | GET | `/conversations/:id/messages` | `?before=&limit=30` |
 | POST | `/conversations/:id/messages` | `{body?, fileId?}` |
 | POST | `/conversations/:id/read` | Marca leído |
-| WS | `/realtime?token=…` | Eventos en vivo |
+| WS | `/realtime?token=…` | *(F7)* Eventos en vivo; el MVP usa polling cada 4 s |
 
 Eventos del WebSocket:
 
@@ -297,8 +297,8 @@ en negocios con COP y USD; no se aplican tasas de cambio.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/files/presign` | `{purpose: "product"|"logo"|"payment_evidence"|"chat", mime, sizeBytes}` → `{fileId, uploadUrl, headers}` |
-| POST | `/files/:id/complete` | Verifica y marca `ready`; devuelve `{url}` |
+| POST | `/files` | `multipart/form-data` con `file`; imágenes JPG/PNG/WebP ≤ 10 MB; devuelve `{file: {id, mime, sizeBytes, url}}` |
+| GET | `/files/:id` | Imagen privada; requiere Bearer o `?token=` firmado (15 min) |
 
 Límites: imagen ≤ 10 MB, MIME `image/jpeg|png|webp`; evidencia y chat siempre
 en bucket privado.

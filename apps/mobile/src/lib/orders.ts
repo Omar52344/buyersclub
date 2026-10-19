@@ -30,6 +30,29 @@ export interface OrderEvent {
   at: string;
 }
 
+export interface PaymentInfo {
+  id: string;
+  status: string;
+  amountCents: number;
+  currency: CurrencyCode;
+  evidenceFileId: string | null;
+  evidenceUrl: string | null;
+  note: string | null;
+  submittedAt: string | null;
+  validatedAt: string | null;
+  rejectionReason: string | null;
+}
+
+export interface BusinessPayment {
+  id: string;
+  status: string;
+  evidenceFileId: string | null;
+  evidenceUrl: string | null;
+  note: string | null;
+  submittedAt: string | null;
+  rejectionReason: string | null;
+}
+
 export interface OrderDetail {
   id: string;
   code: string;
@@ -64,6 +87,7 @@ export interface OrderDetail {
   items: OrderItem[];
   events: OrderEvent[];
   conversationId: string | null;
+  payment: PaymentInfo | null;
   canCancel: boolean;
   viewer: 'buyer' | 'vendor';
 }
@@ -98,6 +122,8 @@ export interface BusinessOrder {
   etaAt: string | null;
   createdAt: string;
   branchName: string;
+  conversationId: string | null;
+  payment: BusinessPayment | null;
   items: { name: string; qty: number }[];
 }
 

@@ -16,6 +16,7 @@ const envSchema = z.object({
   SMTP_URL: z.string().default('smtp://localhost:1025'),
   MAIL_FROM: z.string().default('BuyersClub <no-reply@buyersclub.local>'),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  UPLOAD_DIR: z.string().default('.uploads'),
   EXPOSE_DEV_CODES: z
     .string()
     .default('true')

@@ -4,6 +4,7 @@ node_modules/
 .expo/
 .expo-home/
 .pgdata/
+.uploads/
 .turbo/
 dist/
 build/

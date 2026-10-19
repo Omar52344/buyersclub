@@ -14,11 +14,13 @@ import {
   orderItems,
   orderStatusEvents,
   orders,
+  payments,
   products,
   users,
 } from '../../db/schema';
 import { AppError } from '../../errors';
 import { assertBusinessOwner } from '../businesses/service';
+import { buildFileUrl } from '../../lib/file-token';
 
 type Viewer = 'buyer' | 'vendor';
 
@@ -111,8 +113,8 @@ function viewerFor(row: OrderBaseRow, userId: string): Viewer {
   throw new AppError('FORBIDDEN', 'No tienes acceso a este pedido.', 403);
 }
 
-async function buildDetail(row: OrderBaseRow, viewer: Viewer) {
-  const [items, events, conversation] = await Promise.all([
+async function buildDetail(row: OrderBaseRow, viewer: Viewer, userId: string) {
+  const [items, events, conversation, paymentRows] = await Promise.all([
     db.select().from(orderItems).where(eq(orderItems.orderId, row.id)),
     db
       .select({
@@ -129,7 +131,15 @@ async function buildDetail(row: OrderBaseRow, viewer: Viewer) {
       .from(conversations)
       .where(eq(conversations.orderId, row.id))
       .limit(1),
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, row.id))
+      .orderBy(desc(payments.createdAt))
+      .limit(1),
   ]);
+
+  const payment = paymentRows[0];
 
   return {
     id: row.id,
@@ -179,6 +189,22 @@ async function buildDetail(row: OrderBaseRow, viewer: Viewer) {
       at: event.at,
     })),
     conversationId: conversation[0]?.id ?? null,
+    payment: payment
+      ? {
+          id: payment.id,
+          status: payment.status,
+          amountCents: payment.amountCents,
+          currency: payment.currency,
+          evidenceFileId: payment.evidenceFileId,
+          evidenceUrl: payment.evidenceFileId
+            ? await buildFileUrl(payment.evidenceFileId, userId)
+            : null,
+          note: payment.evidenceNote,
+          submittedAt: payment.submittedAt,
+          validatedAt: payment.validatedAt,
+          rejectionReason: payment.rejectionReason,
+        }
+      : null,
     canCancel:
       viewer === 'buyer' &&
       (row.status === 'pending' || row.status === 'awaiting_payment'),
@@ -189,7 +215,7 @@ async function buildDetail(row: OrderBaseRow, viewer: Viewer) {
 export async function getOrderDetail(userId: string, orderId: string) {
   const row = await loadOrder(orderId);
   const viewer = viewerFor(row, userId);
-  return buildDetail(row, viewer);
+  return buildDetail(row, viewer, userId);
 }
 
 export async function createOrder(buyerUserId: string, input: OrderCreateInput) {
@@ -545,9 +571,11 @@ export async function listBusinessOrders(userId: string, businessId: string, sta
       etaAt: orders.etaAt,
       createdAt: orders.createdAt,
       branchName: branches.name,
+      conversationId: conversations.id,
     })
     .from(orders)
     .innerJoin(branches, eq(orders.branchId, branches.id))
+    .leftJoin(conversations, eq(conversations.orderId, orders.id))
     .where(
       status
         ? and(eq(orders.businessId, businessId), eq(orders.status, status))
@@ -557,21 +585,48 @@ export async function listBusinessOrders(userId: string, businessId: string, sta
     .limit(100);
 
   const ids = rows.map((row) => row.id);
-  const items = ids.length
-    ? await db
-        .select({
-          orderId: orderItems.orderId,
-          name: orderItems.nameSnapshot,
-          qty: orderItems.qty,
-        })
-        .from(orderItems)
-        .where(inArray(orderItems.orderId, ids))
-    : [];
+  const [items, paymentRows] = await Promise.all([
+    ids.length
+      ? db
+          .select({
+            orderId: orderItems.orderId,
+            name: orderItems.nameSnapshot,
+            qty: orderItems.qty,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, ids))
+      : Promise.resolve([]),
+    ids.length
+      ? db
+          .select()
+          .from(payments)
+          .where(inArray(payments.orderId, ids))
+          .orderBy(desc(payments.createdAt))
+      : Promise.resolve([]),
+  ]);
 
-  return rows.map((row) => ({
-    ...row,
-    items: items.filter((item) => item.orderId === row.id),
-  }));
+  return Promise.all(
+    rows.map(async (row) => {
+      const payment = paymentRows.find((entry) => entry.orderId === row.id);
+      return {
+        ...row,
+        items: items.filter((item) => item.orderId === row.id),
+        payment: payment
+          ? {
+              id: payment.id,
+              status: payment.status,
+              evidenceFileId: payment.evidenceFileId,
+              evidenceUrl: payment.evidenceFileId
+                ? await buildFileUrl(payment.evidenceFileId, userId)
+                : null,
+              note: payment.evidenceNote,
+              submittedAt: payment.submittedAt,
+              rejectionReason: payment.rejectionReason,
+            }
+          : null,
+      };
+    }),
+  );
 }
 
 export async function updateOrderStatus(

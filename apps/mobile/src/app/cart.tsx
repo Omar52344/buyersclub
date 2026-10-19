@@ -241,10 +241,15 @@ export default function CartScreen() {
               selected={paymentMethod === 'other'}
               onPress={() => setPaymentMethod('other')}
             />
+            <Chip
+              label="Transferencia"
+              selected={paymentMethod === 'transfer'}
+              onPress={() => setPaymentMethod('transfer')}
+            />
           </View>
           <Text style={styles.helper}>
-            El pago se coordina directamente con la tienda. La transferencia con comprobante llega
-            en la Fase 5.
+            El pago se coordina con la tienda. Si eliges transferencia, después subes el
+            comprobante desde el detalle del pedido para que el vendedor lo valide.
           </Text>
           <Field
             label="Notas para la tienda (opcional)"
