@@ -104,14 +104,14 @@ export default function GuestQrScreen() {
   const deliveryFee =
     fulfillment === 'delivery' ? data?.branch.deliveryFee.amountCents ?? 0 : 0;
   const total = subtotal + deliveryFee;
-  const minOrder = data?.branch.minOrder.amountCents ?? 0;
+  const minDelivery = data?.branch.minOrder.amountCents ?? 0;
   const phoneDigits = phone.replace(/\D/g, '');
   const canSubmit =
     Boolean(data?.branch.isOpen) &&
     items.length > 0 &&
     name.trim().length >= 2 &&
-    phoneDigits.length >= 7 &&
-    total >= minOrder &&
+    phoneDigits.length >= 10 &&
+    (fulfillment === 'pickup' || total >= minDelivery) &&
     (fulfillment === 'pickup' || (line1.trim().length >= 5 && city.trim().length >= 2)) &&
     !submitting &&
     cooldown === 0;
@@ -330,7 +330,7 @@ export default function GuestQrScreen() {
             <TextInput
               value={phone}
               onChangeText={setPhone}
-              placeholder="Celular (ej. 300 123 4567)"
+              placeholder="Celular de 10 dígitos"
               placeholderTextColor="#9AA8A4"
               keyboardType="phone-pad"
               style={styles.input}
@@ -427,9 +427,10 @@ export default function GuestQrScreen() {
                 {money(total, data.branch.business.currency)}
               </Text>
             </View>
-            {subtotal > 0 && subtotal < minOrder ? (
+            {fulfillment === 'delivery' && subtotal > 0 && subtotal < minDelivery ? (
               <Text style={styles.warning}>
-                El mínimo es {money(minOrder, data.branch.business.currency)}.
+                El mínimo para domicilio es{' '}
+                {money(minDelivery, data.branch.business.currency)}.
               </Text>
             ) : null}
             <Text style={styles.helper}>

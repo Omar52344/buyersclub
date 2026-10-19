@@ -377,10 +377,13 @@ export async function createOrder(
   });
 
   const subtotalCents = lines.reduce((total, line) => total + line.lineTotalCents, 0);
-  if (subtotalCents < branch.minOrderCents) {
+  if (
+    input.fulfillment === 'delivery' &&
+    subtotalCents < branch.minOrderCents
+  ) {
     throw new AppError(
       'MIN_ORDER_NOT_MET',
-      'El pedido no alcanza el mínimo de la sucursal.',
+      'El pedido mínimo aplica solo a domicilio.',
       422,
       { minOrderCents: branch.minOrderCents, subtotalCents },
     );

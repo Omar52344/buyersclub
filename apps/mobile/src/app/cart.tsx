@@ -83,7 +83,8 @@ export default function CartScreen() {
 
   const deliveryFee = fulfillment === 'delivery' ? cart.deliveryFeeCents : 0;
   const total = subtotalCents + deliveryFee;
-  const belowMinimum = subtotalCents < cart.minOrderCents;
+  const belowMinimum =
+    fulfillment === 'delivery' && subtotalCents < cart.minOrderCents;
   const canDeliver = cart.fulfillment.delivery;
   const canPickup = cart.fulfillment.pickup;
 
@@ -99,7 +100,7 @@ export default function CartScreen() {
     }
     if (belowMinimum) {
       setError(
-        `El pedido mínimo es ${money(cart.minOrderCents, cart.currency)}. Agrega más productos.`,
+        `El mínimo para domicilio es ${money(cart.minOrderCents, cart.currency)}. Agrega más productos.`,
       );
       return;
     }
@@ -267,7 +268,7 @@ export default function CartScreen() {
           <Row label="Total" value={money(total, cart.currency)} strong />
           {belowMinimum ? (
             <Text style={styles.warning}>
-              Pedido mínimo {money(cart.minOrderCents, cart.currency)}. Faltan{' '}
+              Mínimo para domicilio {money(cart.minOrderCents, cart.currency)}. Faltan{' '}
               {money(cart.minOrderCents - subtotalCents, cart.currency)}.
             </Text>
           ) : null}

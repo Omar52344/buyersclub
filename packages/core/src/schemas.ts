@@ -5,7 +5,20 @@ export const currencySchema = z.enum(CURRENCIES);
 
 export const phoneSchema = z
   .string()
-  .regex(/^\+[1-9]\d{7,14}$/, 'Usa formato E.164, por ejemplo +573001234567');
+  .regex(
+    /^\+[1-9]\d{9,14}$/,
+    'Usa formato E.164 con al menos 10 dígitos, por ejemplo +573001234567',
+  );
+
+export const mobilePhoneSchema = z
+  .string()
+  .refine(
+    (value) => {
+      const digits = value.replace(/\D/g, '').length;
+      return digits >= 10 && digits <= 15;
+    },
+    'El celular debe tener al menos 10 dígitos',
+  );
 
 export const passwordSchema = z
   .string()
@@ -248,7 +261,7 @@ export const orderCreateSchema = z
 export const guestOrderCreateSchema = z
   .object({
     name: z.string().min(2).max(80),
-    phone: z.string().min(7).max(25),
+    phone: mobilePhoneSchema,
     fulfillment: z.enum(['delivery', 'pickup']).default('pickup'),
     paymentMethod: z.enum(['cash', 'card_terminal']).default('cash'),
     items: z.array(orderItemSchema).min(1).max(50),

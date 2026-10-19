@@ -44,12 +44,12 @@ function normalizePhone(raw: string): string {
   if (digits.length === 12 && digits.startsWith('57')) {
     return `+${digits}`;
   }
-  if (digits.length >= 7 && digits.length <= 15) {
+  if (digits.length >= 10 && digits.length <= 15) {
     return `+${digits}`;
   }
   throw new AppError(
     'INVALID_PHONE',
-    'Escribe un número de teléfono válido.',
+    'El celular debe tener al menos 10 dígitos.',
     400,
   );
 }

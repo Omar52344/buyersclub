@@ -578,7 +578,7 @@ export default function VendorScreen() {
                       Envío {money(branch.deliveryFeeCents, business.currency)}
                     </Text>
                     <Text style={styles.meta}>
-                      Mínimo {money(branch.minOrderCents, business.currency)}
+                      Mín. domicilio {money(branch.minOrderCents, business.currency)}
                     </Text>
                   </View>
                   <BranchQrPreview
@@ -664,7 +664,7 @@ export default function VendorScreen() {
                   </View>
                   <View style={styles.gridItem}>
                     <TextField
-                      label={`Pedido mínimo (${business.currency})`}
+                      label={`Mínimo para domicilio (${business.currency})`}
                       value={minOrder}
                       onChangeText={setMinOrder}
                       placeholder="10000"

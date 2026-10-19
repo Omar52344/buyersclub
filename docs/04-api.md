@@ -191,6 +191,10 @@ tiene un límite de 30 peticiones/minuto por IP.
 
 ## 6. Pedidos
 
+El mínimo de la sucursal (`minOrderCents`) solo se valida cuando
+`fulfillment = delivery`; la recogida en tienda no tiene mínimo. Los teléfonos de
+invitado y de registro deben tener al menos 10 dígitos (E.164 en registro).
+
 | Método | Ruta | Actor | Descripción |
 |---|---|---|---|
 | POST | `/orders` | comprador | Crea pedido; recalcula precios y valida sucursal abierta, mínimo y stock |

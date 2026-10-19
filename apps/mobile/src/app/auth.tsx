@@ -29,6 +29,18 @@ type Step = 'start' | 'email-code' | 'phone-code' | 'login-code';
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 const PHONE_PATTERN = /^\+?[\d\s-]{8,18}$/;
 
+function phoneDigits(value: string): number {
+  return value.replace(/\D/g, '').length;
+}
+
+function toE164(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 10 && digits.startsWith('3')) {
+    return `+57${digits}`;
+  }
+  return `+${digits}`;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.message;
@@ -108,8 +120,13 @@ export default function AuthScreen() {
     setInfo(null);
 
     if (isLogin) {
-      if (identifier.trim().length < 5) {
+      const identifierValue = identifier.trim();
+      if (identifierValue.length < 5) {
         setError('Ingresa tu correo o tu celular.');
+        return;
+      }
+      if (!identifierValue.includes('@') && phoneDigits(identifierValue) < 10) {
+        setError('El celular debe tener al menos 10 dígitos.');
         return;
       }
       if (!password) {
@@ -119,7 +136,10 @@ export default function AuthScreen() {
 
       setBusy(true);
       try {
-        await loginWithPassword(identifier.trim(), password);
+        await loginWithPassword(
+          identifierValue.includes('@') ? identifierValue : toE164(identifierValue),
+          password,
+        );
         router.replace('/home');
       } catch (caught) {
         setError(errorMessage(caught));
@@ -133,8 +153,8 @@ export default function AuthScreen() {
       setError('Ingresa un correo válido.');
       return;
     }
-    if (!PHONE_PATTERN.test(phone.trim())) {
-      setError('Ingresa tu celular con indicativo, por ejemplo +57 300 123 4567.');
+    if (!PHONE_PATTERN.test(phone.trim()) || phoneDigits(phone) < 10) {
+      setError('Ingresa un celular de al menos 10 dígitos, por ejemplo 300 123 4567.');
       return;
     }
     const passwordError = passwordProblem(password, confirmPassword);
@@ -147,7 +167,7 @@ export default function AuthScreen() {
     try {
       const response = await startSignup({
         email: email.trim(),
-        phone: phone.trim(),
+        phone: toE164(phone.trim()),
         password,
         role: isVendor ? 'vendor' : 'buyer',
       });
@@ -173,14 +193,21 @@ export default function AuthScreen() {
   async function handleStartOtp() {
     setError(null);
     setInfo(null);
-    if (identifier.trim().length < 5) {
+    const identifierValue = identifier.trim();
+    if (identifierValue.length < 5) {
       setError('Ingresa tu correo o tu celular para enviarte el código.');
+      return;
+    }
+    if (!identifierValue.includes('@') && phoneDigits(identifierValue) < 10) {
+      setError('El celular debe tener al menos 10 dígitos.');
       return;
     }
 
     setBusy(true);
     try {
-      const response = await startLoginOtp(identifier.trim());
+      const response = await startLoginOtp(
+        identifierValue.includes('@') ? identifierValue : toE164(identifierValue),
+      );
       setEmailForCode(response.email);
       setDevCode(response.devCode);
       setCode('');
@@ -213,7 +240,12 @@ export default function AuthScreen() {
         await verifySignupPhone(signupId, code);
         router.replace('/home');
       } else if (step === 'login-code') {
-        await verifyLoginOtp(identifier.trim(), code);
+        await verifyLoginOtp(
+          identifier.trim().includes('@')
+            ? identifier.trim()
+            : toE164(identifier.trim()),
+          code,
+        );
         router.replace('/home');
       }
     } catch (caught) {

@@ -260,7 +260,7 @@ export default function ExploreScreen() {
                 <View style={styles.rowBetween}>
                   <Text style={styles.meta}>
                     Envío {money(branch.deliveryFee.amountCents, branch.business.currency)} ·
-                    Mínimo {money(branch.minOrder.amountCents, branch.business.currency)}
+                    Mín. domicilio {money(branch.minOrder.amountCents, branch.business.currency)}
                   </Text>
                   <Text style={styles.link}>Ver tienda →</Text>
                 </View>

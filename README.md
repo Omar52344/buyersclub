@@ -200,6 +200,10 @@ auditoría, Helmet y limpieza periódica.
   tienda.
 - El servidor exige **60 segundos** entre pedidos del mismo teléfono en la misma
   sucursal (límite atómico en base de datos) y 30 pedidos/minuto por IP.
+- El **mínimo de la sucursal solo aplica a domicilio**; recoger en tienda no
+  tiene pedido mínimo.
+- El celular debe tener **al menos 10 dígitos** (se normaliza a `+57` si es un
+  móvil colombiano de 10 dígitos).
 - `PUBLIC_APP_URL` en `apps/api/.env` define el dominio del enlace. En producción
   debe ser el dominio público; en local, `http://localhost:8081`. En hosting
   estático, asegura que `/qr` resuelva a `qr.html` (clean URLs).

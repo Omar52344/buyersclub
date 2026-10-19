@@ -163,8 +163,8 @@ export default function StoreScreen() {
             {branch.fulfillment.pickup ? <Tag label="Recogida en tienda" /> : null}
           </View>
           <Text style={styles.muted}>
-            Envío {money(branch.deliveryFee.amountCents, branch.business.currency)} · Pedido
-            mínimo {money(branch.minOrder.amountCents, branch.business.currency)}
+            Envío {money(branch.deliveryFee.amountCents, branch.business.currency)} · Mínimo
+            domicilio {money(branch.minOrder.amountCents, branch.business.currency)}
           </Text>
           <Text style={styles.muted}>
             Preparación estimada {branch.prepTimeMinutes} min · Entrega {branch.etaMinutes} min
