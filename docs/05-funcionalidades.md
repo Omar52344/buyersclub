@@ -59,7 +59,7 @@ Como visitante quiero verificar mi celular para que la app sepa que es mío.
 - [ ] Se genera y valida un código de 6 dígitos para el teléfono.
 - [ ] En fase 1 se muestra un aviso: "Aún no enviamos SMS; tu número quedará
       pendiente de verificación por mensaje".
-- [ ] El perfil muestra `phoneVerifiedAt: null` y el estado "pendiente de SMS".
+- [ ] El perfil muestra `phoneVerificationMethod: "otp_dev"` y el estado "SMS pendiente"; la verificación real por SMS se activa en fase 2.
 - [ ] La cuenta queda activa y se emiten tokens al validar.
 - [ ] El canal SMS queda modelado para conectarse sin migración (ADR-006).
 

@@ -9,6 +9,15 @@ const envSchema = z.object({
     .default('postgres://postgres:postgres@localhost:5432/buyersclub'),
   CORS_ORIGIN: z.string().default('*'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  JWT_SECRET: z.string().min(16).default('dev-only-secret-change-me-please-32'),
+  ACCESS_TOKEN_TTL: z.string().default('15m'),
+  REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
+  SMTP_URL: z.string().default('smtp://localhost:1025'),
+  MAIL_FROM: z.string().default('BuyersClub <no-reply@buyersclub.local>'),
+  EXPOSE_DEV_CODES: z
+    .string()
+    .default('true')
+    .transform((value) => value.toLowerCase() !== 'false'),
 });
 
 const parsed = envSchema.safeParse(process.env);

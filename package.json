@@ -15,8 +15,11 @@
     "web": "npm run web --workspace @buyersclub/mobile",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "services:up": "docker compose -f infra/docker-compose.yml up -d --wait",
+    "services:down": "docker compose -f infra/docker-compose.yml down",
     "db:generate": "npm run db:generate --workspace @buyersclub/api",
-    "db:migrate": "npm run db:migrate --workspace @buyersclub/api"
+    "db:migrate": "npm run db:migrate --workspace @buyersclub/api",
+    "db:setup": "npm run services:up && npm run db:migrate"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

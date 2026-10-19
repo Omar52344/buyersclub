@@ -108,11 +108,14 @@ export npm_config_cache="$PWD/.npm-cache"
 npm install
 
 # 2. Servicios locales (Postgres+PostGIS en 5433, Redis, S3 local (Moto), Mailpit)
-#    Si no usas Docker, apunta DATABASE_URL a un Postgres con PostGIS propio.
-docker compose -f infra/docker-compose.yml up -d
+#    --wait evita el error 57P03 de "database system is starting up".
+npm run services:up
+
+# Alternativa sin esperar: docker compose -f infra/docker-compose.yml up -d
 
 # El storage local es Moto (S3 en memoria): los archivos se pierden al
 # reiniciar el contenedor. En producción se usa Cloudflare R2 / S3.
+# Mailpit (correos de prueba): http://localhost:8025
 
 # 3. Variables de entorno
 cp apps/api/.env.example apps/api/.env
@@ -139,14 +142,15 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | `packages/core` (dinero, monedas, estados, Zod) | ✅ Con pruebas |
 | API Fastify (health, meta, errores, rate limit, CORS) | ✅ |
 | Infra local: PostGIS, Redis, S3 (Moto) y Mailpit | ✅ `infra/docker-compose.yml` |
-| Esquema PostgreSQL/Drizzle + migración inicial | ✅ Generada (`drizzle/0000_init.sql`); aplicar con `npm run db:migrate` |
+| Esquema PostgreSQL/Drizzle | ✅ Aplicado en Docker: 23 tablas + PostGIS 3.4 |
+| API de autenticación (signup, OTP correo/celular, login, refresh, `/me`) | ✅ Probada de punta a punta con Mailpit |
 | App Expo: bienvenida y selección cliente/vendedor | ✅ |
-| App Expo: formulario de registro (validación local) | ✅ |
-| Autenticación OTP contra la API | ⏳ Siguiente |
+| App Expo: registro/login conectados a la API y pantalla de cuenta | ✅ |
 | Mapa, catálogo, pedidos, chat, dashboards | ⏳ Fases 2–6 |
 
 ## 9. Próximo paso
 
-Las decisiones de país, moneda, mapas, backend y web están cerradas. Continuar
-la **Fase 1 — Fundaciones** con la autenticación OTP completa (signup, códigos,
-sesiones) sobre la base de datos ya migrada.
+La **Fase 1 quedó cerrada**: registro con correo y celular, códigos OTP, sesión con
+refresh token y pantalla de cuenta funcionando contra la base real. Sigue la
+**Fase 2 — Vendedor**: empresa, sucursales con mapa y geocodificación, horarios y
+catálogo compartido con precios por sucursal.

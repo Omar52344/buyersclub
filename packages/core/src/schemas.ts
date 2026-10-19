@@ -25,6 +25,31 @@ export const otpVerifySchema = z.object({
   code: z.string().regex(/^\d{6}$/, 'El código tiene 6 dígitos'),
 });
 
+export const signupVerifyEmailSchema = z.object({
+  signupId: z.string().uuid(),
+  code: z.string().regex(/^\d{6}$/, 'El código tiene 6 dígitos'),
+});
+
+export const signupVerifyPhoneSchema = signupVerifyEmailSchema;
+
+export const loginStartSchema = z.object({
+  identifier: z.string().min(5).max(120),
+});
+
+export const loginVerifySchema = z.object({
+  identifier: z.string().min(5).max(120),
+  code: z.string().regex(/^\d{6}$/, 'El código tiene 6 dígitos'),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(20),
+});
+
+export const deviceTokenSchema = z.object({
+  expoPushToken: z.string().min(10),
+  platform: z.enum(['ios', 'android']),
+});
+
 export const businessCreateSchema = z.object({
   name: z.string().min(2).max(80),
   description: z.string().max(500).optional(),
@@ -79,6 +104,12 @@ export type CurrencyCode = z.infer<typeof currencySchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 export type OtpRequestInput = z.infer<typeof otpRequestSchema>;
 export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
+export type SignupVerifyEmailInput = z.infer<typeof signupVerifyEmailSchema>;
+export type SignupVerifyPhoneInput = z.infer<typeof signupVerifyPhoneSchema>;
+export type LoginStartInput = z.infer<typeof loginStartSchema>;
+export type LoginVerifyInput = z.infer<typeof loginVerifySchema>;
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type DeviceTokenInput = z.infer<typeof deviceTokenSchema>;
 export type BusinessCreateInput = z.infer<typeof businessCreateSchema>;
 export type BranchCreateInput = z.infer<typeof branchCreateSchema>;
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;

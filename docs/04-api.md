@@ -63,7 +63,7 @@ SMS llegará pronto.
 | POST | `/auth/signup/start` | Crea usuario pendiente y envía OTP al correo. `{email, phone, role}` |
 | POST | `/auth/signup/verify-email` | Valida OTP de correo. `{signupId, code}` |
 | POST | `/auth/signup/verify-phone` | Valida OTP de teléfono y emite tokens |
-| POST | `/auth/otp/request` | Reenvía OTP. `{channel, destination, purpose}` (rate limited) |
+| POST | `/auth/otp/resend` | Reenvía OTP. `{channel, destination, purpose}` (rate limited) |
 | POST | `/auth/login` | Inicia sesión con correo o teléfono. `{identifier}` |
 | POST | `/auth/login/verify` | `{identifier, code}` → tokens |
 | POST | `/auth/refresh` | `{refreshToken}` rotativo |
@@ -82,6 +82,7 @@ SMS llegará pronto.
   "phone": "+573001234567",
   "emailVerifiedAt": "2026-01-31T13:00:00Z",
   "phoneVerifiedAt": null,
+  "phoneVerificationMethod": "otp_dev",
   "roles": ["buyer", "vendor_owner"],
   "businesses": [{ "id": "…", "name": "Panadería La 70", "role": "owner" }],
   "onboarding": { "buyerComplete": true, "vendorComplete": false }
@@ -285,7 +286,7 @@ en bucket privado.
 
 | Endpoint | Límite |
 |---|---|
-| `/auth/otp/request` | 3 / 15 min por destino, 10 / hora por IP |
+| `/auth/otp/resend` | 3 / 15 min por destino, 10 / hora por IP |
 | `/auth/*verify` | 5 intentos / código, 20 / hora por IP |
 | `POST /orders` | 10 / hora por usuario |
 | `POST /conversations/:id/messages` | 60 / hora por usuario |
