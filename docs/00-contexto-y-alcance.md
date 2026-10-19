@@ -91,7 +91,7 @@ sequenceDiagram
 
 ### Dentro
 
-- Registro/login **passwordless** con correo + teléfono y códigos OTP.
+- Registro/login con **contraseña** y verificación por **códigos OTP** (correo y teléfono).
 - Verificación de correo real; verificación de teléfono **simulada/registrada**
   (sin SMS) con la estructura lista para conectar Twilio/MessageBird después.
 - Onboarding de vendedor: empresa, N sucursales, dirección con geocodificación,

@@ -22,7 +22,7 @@ entrega en tienda o a domicilio. Compradores y vendedores en una sola app
 | Archivos (evidencia de pago, fotos) | **S3-compatible** (Cloudflare R2 o Moto (S3 local)) con URLs firmadas |
 | Notificaciones | **Expo Push Service** (APNs/FCM) + notificaciones locales |
 | Mapas | **Google Maps Platform** (decisión cerrada): `react-native-maps` en nativo + Maps JS en web, aislados tras una interfaz propia |
-| Autenticación | **Passwordless**: código OTP por correo; teléfono con OTP "pendiente de SMS" en fase 1 |
+| Autenticación | **Contraseña** (scrypt) + **OTP por correo** para verificar y recuperar; teléfono verificado por código (SMS real en fase 2) |
 | Monedas | **COP** por defecto; el vendedor elige **COP o USD** al crear su empresa. Sin conversión entre monedas en fase 1 |
 | Monorepo | **npm workspaces**: `apps/mobile`, `apps/api`, `packages/core` (Turborepo opcional más adelante) |
 | Despliegue | API en Fly.io/Railway, Postgres gestionado (Neon/Supabase), web estática en Cloudflare/Vercel, builds móviles con **EAS** |
@@ -124,6 +124,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 # 4. Base de datos
 npm run db:generate    # solo si cambió el esquema
 npm run db:migrate
+npm run db:seed        # categorías iniciales (idempotente)
 
 # 5. API
 npm run dev:api        # http://localhost:3000/health · /v1/meta
@@ -143,14 +144,19 @@ npm run dev:mobile     # QR para Expo Go / dev client
 | API Fastify (health, meta, errores, rate limit, CORS) | ✅ |
 | Infra local: PostGIS, Redis, S3 (Moto) y Mailpit | ✅ `infra/docker-compose.yml` |
 | Esquema PostgreSQL/Drizzle | ✅ Aplicado en Docker: 23 tablas + PostGIS 3.4 |
-| API de autenticación (signup, OTP correo/celular, login, refresh, `/me`) | ✅ Probada de punta a punta con Mailpit |
-| App Expo: bienvenida y selección cliente/vendedor | ✅ |
-| App Expo: registro/login conectados a la API y pantalla de cuenta | ✅ |
-| Mapa, catálogo, pedidos, chat, dashboards | ⏳ Fases 2–6 |
+| API de autenticación (contraseña + OTP, refresh, recuperación, `/me`) | ✅ Probada de punta a punta con Mailpit |
+| App Expo: registro/login con contraseña, código alternativo y recuperación | ✅ |
+| Fase 2 API: empresa, sucursales, horarios, catálogo y overrides | ✅ Probada de punta a punta |
+| Fase 2 App: pantalla "Mi negocio" (empresa, sucursales, horarios y catálogo) | ✅ Incluida en el build web |
+| Descubrimiento en mapa, pedidos, chat, dashboards | ⏳ Fases 3–6 |
 
 ## 9. Próximo paso
 
-La **Fase 1 quedó cerrada**: registro con correo y celular, códigos OTP, sesión con
-refresh token y pantalla de cuenta funcionando contra la base real. Sigue la
-**Fase 2 — Vendedor**: empresa, sucursales con mapa y geocodificación, horarios y
-catálogo compartido con precios por sucursal.
+La **Fase 2 quedó cerrada**: cada vendedor crea su empresa (COP/USD), sucursales
+con horarios y estado manual, y un catálogo compartido con precios por sucursal.
+Sigue la **Fase 3 — Descubrimiento**: mapa con Google Maps, ficha pública de la
+tienda y cálculo de abierto/cerrado en el servidor.
+
+> Para renderizar el mapa hace falta la `GOOGLE_MAPS_API_KEY` (Maps SDK +
+> Geocoding). Las coordenadas de las sucursales ya se guardan; sin la key, el
+> alta de sucursal geocodifica con Nominatim en desarrollo.

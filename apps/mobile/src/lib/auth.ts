@@ -42,6 +42,7 @@ export interface LoginStartResponse {
 export async function startSignup(input: {
   email: string;
   phone: string;
+  password: string;
   fullName?: string;
   role: 'buyer' | 'vendor';
 }): Promise<SignupStartResponse> {
@@ -73,15 +74,27 @@ export async function verifySignupPhone(signupId: string, code: string): Promise
   return session;
 }
 
-export async function startLogin(identifier: string): Promise<LoginStartResponse> {
-  return fetchApi<LoginStartResponse>('/v1/auth/login', {
+export async function loginWithPassword(identifier: string, password: string): Promise<Session> {
+  const session = await fetchApi<Session>('/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ identifier, password }),
+  });
+  await saveSession({
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+  });
+  return session;
+}
+
+export async function startLoginOtp(identifier: string): Promise<LoginStartResponse> {
+  return fetchApi<LoginStartResponse>('/v1/auth/login/otp', {
     method: 'POST',
     body: JSON.stringify({ identifier }),
   });
 }
 
-export async function verifyLogin(identifier: string, code: string): Promise<Session> {
-  const session = await fetchApi<Session>('/v1/auth/login/verify', {
+export async function verifyLoginOtp(identifier: string, code: string): Promise<Session> {
+  const session = await fetchApi<Session>('/v1/auth/login/otp/verify', {
     method: 'POST',
     body: JSON.stringify({ identifier, code }),
   });
@@ -90,6 +103,26 @@ export async function verifyLogin(identifier: string, code: string): Promise<Ses
     refreshToken: session.refreshToken,
   });
   return session;
+}
+
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ sent: boolean; devCode?: string }> {
+  return fetchApi('/v1/auth/password/reset/request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(
+  email: string,
+  code: string,
+  password: string,
+): Promise<{ ok: boolean }> {
+  return fetchApi('/v1/auth/password/reset', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, password }),
+  });
 }
 
 export async function resendOtp(input: {

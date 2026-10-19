@@ -239,13 +239,14 @@ imágenes y (c) responsabilidad clara frente a fraudes. Ver `07`.
 - **Consecuencias**: búsquedas por radio exactas en metros; requiere extensión
   PostGIS en el proveedor (Neon y Supabase la soportan).
 
-### ADR-006 — Autenticación passwordless con OTP
-- **Decisión**: correo con OTP real; teléfono con OTP registrado pero **sin
-  envío SMS** en fase 1 (se muestra el código en modo desarrollo y se marca el
-  número como "no verificado por SMS").
-- **Consecuencias**: menos fricción y sin costo de SMS; el modelo
-  `verifications` ya soporta el canal `sms` para activarlo después. Riesgo de
-  suplantación de teléfono asumido y documentado en `07`.
+### ADR-006 — Contraseña + OTP para verificar y recuperar
+- **Decisión**: contraseña hasheada con **scrypt** (salt por usuario y parámetros
+  versionados) como método principal; OTP de 6 dígitos por correo para verificar
+  el correo, verificar el teléfono (simulado en fase 1) y recuperar la
+  contraseña. El login por código queda como alternativa.
+- **Consecuencias**: menos dependencia del correo para entrar a diario y mejor
+  seguridad; el teléfono queda con `phoneVerificationMethod = otp_dev` hasta
+  activar SMS. La recuperación de contraseña revoca todas las sesiones activas.
 
 ### ADR-007 — Dinero en enteros
 - **Decisión**: `*_cents BIGINT` + `currency CHAR(3)`.

@@ -1,5 +1,8 @@
 # 06 — Roadmap y estimación
 
+> **Estado de implementación:** F1 ✅ y F2 ✅ completadas (auth con contraseña +
+> OTP, empresa, sucursales, horarios y catálogo). F3 en curso.
+
 ## 1. Supuestos de estimación
 
 - Equipo base: **1 desarrollador full-stack** con apoyo de IA (esta sesión) y

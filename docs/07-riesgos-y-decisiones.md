@@ -48,7 +48,7 @@ Probabilidad (P) e impacto (I): A = alto, M = medio, B = bajo.
 | D-01 | React Native + Expo para iOS, Android y web | `01` |
 | D-02 | TypeScript en todo el stack | `01` |
 | D-03 | Fastify + PostgreSQL/PostGIS + Drizzle | `01`, `02` |
-| D-04 | Autenticación passwordless por OTP; SMS en fase 2 | `02` ADR-006 |
+| D-04 | Autenticación con **contraseña (scrypt) + OTP**; SMS real en fase 2 | `02` ADR-006 |
 | D-05 | Catálogo compartido con overrides por sucursal | `02` ADR-009 |
 | D-06 | Estado abierto/cerrado calculado en servidor | `02` ADR-010 |
 | D-07 | Evidencia de pago en bucket privado, validación manual | `02` ADR-008 |
@@ -78,8 +78,8 @@ Fastify como backend y web desarrollada en paralelo con la misma base de código
 ## 5. Preguntas para el usuario
 
 **Ya resueltas:** país (Colombia), monedas (COP por defecto, USD opcional),
-prioridad web (en paralelo, misma base de código), proveedor de mapas (Google) y
-backend (Fastify).
+prioridad web (en paralelo, misma base de código), proveedor de mapas (Google),
+backend (Fastify) y autenticación (contraseña + OTP).
 
 1. **¿Quién valida el pago: solo el vendedor o también un administrador** en
    caso de disputa?
@@ -87,8 +87,6 @@ backend (Fastify).
    disponible" en el MVP?
 3. **¿Hay un diseño de marca** (logo, colores, nombre definitivo) o lo definimos
    en F1?
-4. **¿Confirmas el enfoque passwordless** (sin contraseñas, todo por código) o
-   quieres además correo+contraseña?
 
 ## 6. Métricas de éxito del MVP (fase 1)
 

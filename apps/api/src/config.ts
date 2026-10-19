@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -14,6 +15,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
   SMTP_URL: z.string().default('smtp://localhost:1025'),
   MAIL_FROM: z.string().default('BuyersClub <no-reply@buyersclub.local>'),
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
   EXPOSE_DEV_CODES: z
     .string()
     .default('true')

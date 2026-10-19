@@ -44,7 +44,7 @@ Flujo de registro (correo y teléfono obligatorios):
 sequenceDiagram
   participant App
   participant API
-  App->>API: POST /auth/signup/start {email, phone, role}
+  App->>API: POST /auth/signup/start {email, phone, password, role}
   API-->>App: 201 {signupId, next: "verify_email"}
   API->>App: (correo) código de 6 dígitos
   App->>API: POST /auth/signup/verify-email {signupId, code}
@@ -58,17 +58,24 @@ genera, se guarda hasheado y en `staging/local` se devuelve en la respuesta bajo
 un flag `devCode` (nunca en producción). La UI explica que la verificación por
 SMS llegará pronto.
 
+La contraseña se guarda con **scrypt** (salt por usuario y parámetros
+versionados). Recuperarla exige un código al correo y revoca todas las sesiones
+activas.
+
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/auth/signup/start` | Crea usuario pendiente y envía OTP al correo. `{email, phone, role}` |
+| POST | `/auth/signup/start` | Crea usuario pendiente y envía OTP al correo. `{email, phone, password, fullName?, role}` |
 | POST | `/auth/signup/verify-email` | Valida OTP de correo. `{signupId, code}` |
 | POST | `/auth/signup/verify-phone` | Valida OTP de teléfono y emite tokens |
 | POST | `/auth/otp/resend` | Reenvía OTP. `{channel, destination, purpose}` (rate limited) |
-| POST | `/auth/login` | Inicia sesión con correo o teléfono. `{identifier}` |
-| POST | `/auth/login/verify` | `{identifier, code}` → tokens |
+| POST | `/auth/login` | Inicia sesión con contraseña. `{identifier, password}` |
+| POST | `/auth/login/otp` | Envía un código de acceso alternativo. `{identifier}` |
+| POST | `/auth/login/otp/verify` | `{identifier, code}` → tokens |
+| POST | `/auth/password/reset/request` | `{email}`; respuesta genérica (no revela si existe) |
+| POST | `/auth/password/reset` | `{email, code, password}`; revoca sesiones |
 | POST | `/auth/refresh` | `{refreshToken}` rotativo |
 | POST | `/auth/logout` | Revoca refresh token del dispositivo |
-| GET | `/me` | Perfil + roles + negocios |
+| GET | `/me` | Perfil + roles + onboarding |
 | PATCH | `/me` | Nombre, avatar, locale |
 | DELETE | `/me` | Elimina/anonimiza la cuenta (requisito de tiendas) |
 | POST | `/me/devices` | Registra `expoPushToken`, plataforma |
@@ -81,10 +88,9 @@ SMS llegará pronto.
   "email": "ana@example.com",
   "phone": "+573001234567",
   "emailVerifiedAt": "2026-01-31T13:00:00Z",
-  "phoneVerifiedAt": null,
+  "phoneVerifiedAt": "2026-01-31T13:05:00Z",
   "phoneVerificationMethod": "otp_dev",
   "roles": ["buyer", "vendor_owner"],
-  "businesses": [{ "id": "…", "name": "Panadería La 70", "role": "owner" }],
   "onboarding": { "buyerComplete": true, "vendorComplete": false }
 }
 ```
@@ -93,7 +99,7 @@ SMS llegará pronto.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/discovery/categories` | Árbol de categorías |
+| GET | `/categories` | Categorías globales (público) |
 | GET | `/discovery/branches` | Sucursales en un radio. Params: `lat`, `lng` (obligatorios), `radius` (m, máx. 20000), `categoryId`, `openNow`, `fulfillment` (`delivery`/`pickup`), `q`, `limit` (máx. 200) |
 | GET | `/discovery/branches/:id` | Ficha pública: sucursal, horario, estado, catálogo disponible |
 | GET | `/discovery/search` | Búsqueda por texto de tiendas y productos |
@@ -129,30 +135,29 @@ de 200 y el viewport evitan cargas masivas.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/businesses` | Onboarding: crea empresa. `{name, categoryId, description?, slug?, currency?}`; `currency` ∈ `COP`/`USD`, por defecto `COP` |
-| GET | `/businesses/me` | Empresa(s) del usuario |
-| PATCH | `/businesses/:id` | Nombre, logo, descripción. La moneda solo se puede cambiar si no hay pedidos |
-| POST | `/businesses/:id/branches` | Crea sucursal. `{name, address, lat, lng, phone, timezone}` (geocodifica si no hay lat/lng) |
-| GET | `/businesses/:id/branches` | Lista con `isOpen` y contadores de pedidos activos |
-| PATCH | `/branches/:id` | Dirección, contacto, envío, mínimos, ETA, medios |
+| POST | `/businesses` | Onboarding: crea empresa. `{name, description?, categoryId?, currency?}`; `currency` ∈ `COP`/`USD`, por defecto `COP` |
+| GET | `/businesses/me` | Empresa(s) del usuario con sucursales y conteo de productos |
+| PATCH | `/businesses/:id` | Nombre, categoría, descripción y moneda (solo sin pedidos) |
+| POST | `/businesses/:id/branches` | Crea sucursal. `{name, addressLine, city, phone?, lat?, lng?, timezone?, deliveryFeeCents?, minOrderCents?, prepTimeMinutes?, deliveryEtaMinutes?, pickupEnabled?, deliveryEnabled?}`. Si no hay lat/lng se geocodifica (Google si hay key, Nominatim en desarrollo) |
+| GET | `/businesses/:id/branches` | Sucursales con horarios y excepciones |
+| PATCH | `/branches/:id` | Dirección, contacto, envío, mínimos, ETA, medios y estado |
 | PUT | `/branches/:id/hours` | Reemplaza horarios. `{ranges: [{weekday, opensAt, closesAt}], exceptions: [...]}` |
 | POST | `/branches/:id/open` | Interruptor manual. `{manualOpen: true}` |
-| GET | `/branches/:id/orders` | Pedidos de la sucursal. `?status=&from=&to=&cursor=` |
-| POST | `/branches/:id/products` | Añade productos existentes a la sucursal con overrides |
-| PATCH | `/branches/:id/products/:productId` | `{priceCents?, stock?, isAvailable?}` |
+| GET | `/branches/:id/products` | Catálogo efectivo de la sucursal (precio con override) |
+| GET | `/branches/:id/orders` | *(Fase 4)* Pedidos de la sucursal. `?status=&from=&to=&cursor=` |
 
-Validaciones: `timezone` IANA; `lat/lng` dentro del país; no se puede activar
-una sucursal sin horarios ni dirección; `deliveryFeeCents ≥ 0`.
+Validaciones: `timezone` IANA; `lat/lng` dentro del rango válido; `deliveryFeeCents ≥ 0`;
+dirección y ciudad obligatorias.
 
 ## 5. Catálogo
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/products` | Productos de la empresa. `?q=&categoryId=&active=` |
-| POST | `/products` | Crea producto. `{name, description?, categoryId, basePriceCents, imageFileId?, attributes?, branchIds?, shareWithAllBranches?}` |
-| PATCH | `/products/:id` | Edita producto |
-| DELETE | `/products/:id` | Desactiva (soft) |
-| PUT | `/products/:id/branches` | Define en qué sucursales está y con qué overrides |
+| GET | `/products` | Productos de la empresa. `?businessId=` (obligatorio) |
+| POST | `/products` | Crea producto. `{businessId, name, description?, categoryId?, basePriceCents, imageFileId?, branchIds?, shareWithAllBranches?}` |
+| PATCH | `/products/:id` | Edita producto, precio, disponibilidad |
+| DELETE | `/products/:id` | Desactiva (soft delete) |
+| PUT | `/products/:id/branches` | Define en qué sucursales está y con qué overrides `{branches: [{branchId, priceCents?, stock?, isAvailable}]}` |
 
 `shareWithAllBranches: true` genera filas en `branch_products` para cada
 sucursal activa; las sucursales nuevas heredan los productos marcados como

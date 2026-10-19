@@ -39,6 +39,8 @@ Como visitante quiero registrarme con mi correo y mi celular para tener una
 cuenta verificada.
 
 - [ ] Formulario con correo y teléfono ( selector de país, validación E.164).
+- [ ] Contraseña de al menos 8 caracteres con una letra y un número; se guarda
+      hasheada con scrypt (nunca en claro).
 - [ ] Errores claros si el correo o el teléfono ya existen (`EMAIL_TAKEN`, `PHONE_TAKEN`).
 - [ ] Al enviar, se crea la cuenta pendiente y se envía un código de 6 dígitos al correo.
 - [ ] El código expira a los 10 minutos y se puede reenviar (máx. 3 veces / 15 min).
@@ -64,9 +66,11 @@ Como visitante quiero verificar mi celular para que la app sepa que es mío.
 - [ ] El canal SMS queda modelado para conectarse sin migración (ADR-006).
 
 ### HU-05 · Iniciar sesión (M, 3)
-Como usuario registrado quiero entrar con mi correo o teléfono y un código.
+Como usuario registrado quiero entrar con mi correo o teléfono y mi contraseña.
 
-- [ ] Un solo campo que acepta correo o teléfono.
+- [ ] Un solo campo que acepta correo o teléfono, más la contraseña.
+- [ ] Alternativa "entrar con un código por correo".
+- [ ] Recuperación de contraseña por código enviado al correo.
 - [ ] Si el usuario no existe, se ofrece registrarse.
 - [ ] Código único, TTL 10 min, máx. 5 intentos.
 - [ ] Sesión persistente entre reinicios; refresh automático.

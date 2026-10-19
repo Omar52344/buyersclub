@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "share_with_all_branches" boolean DEFAULT true NOT NULL;

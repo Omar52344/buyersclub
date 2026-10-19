@@ -14,10 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api';
 import {
+  loginWithPassword,
   resendOtp,
-  startLogin,
+  startLoginOtp,
   startSignup,
-  verifyLogin,
+  verifyLoginOtp,
   verifySignupEmail,
   verifySignupPhone,
 } from '../lib/auth';
@@ -35,6 +36,19 @@ function errorMessage(error: unknown): string {
   return 'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.';
 }
 
+function passwordProblem(password: string, confirmation: string): string | null {
+  if (password.length < 8) {
+    return 'La contraseña debe tener al menos 8 caracteres.';
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return 'La contraseña debe incluir al menos una letra y un número.';
+  }
+  if (password !== confirmation) {
+    return 'Las contraseñas no coinciden.';
+  }
+  return null;
+}
+
 export default function AuthScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: string; mode?: string }>();
@@ -45,6 +59,8 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
   const [signupId, setSignupId] = useState<string | null>(null);
   const [emailForCode, setEmailForCode] = useState('');
@@ -78,10 +94,10 @@ export default function AuthScreen() {
 
   const subtitles: Record<Step, string> = {
     start: isLogin
-      ? 'Entra con tu correo o celular. Te enviamos un código, sin contraseñas.'
+      ? 'Entra con tu contraseña o recibe un código por correo.'
       : isVendor
-        ? 'Verificamos tu correo y tu celular. Después crearás tu empresa y sucursales.'
-        : 'Verifica tu correo y tu celular para empezar a pedir en el mapa.',
+        ? 'Crea tu contraseña y verifica tu correo y celular. Después registrarás tu empresa.'
+        : 'Crea tu contraseña y verifica tu correo y celular para empezar a pedir.',
     'email-code': `Ingresa el código de 6 dígitos que enviamos a ${emailForCode}.`,
     'phone-code': `Ingresa el código de 6 dígitos para ${phoneForCode}. En esta fase no enviamos SMS: el código se muestra abajo y queda registrado en la base.`,
     'login-code': `Enviamos un código de 6 dígitos a ${emailForCode}.`,
@@ -96,45 +112,80 @@ export default function AuthScreen() {
         setError('Ingresa tu correo o tu celular.');
         return;
       }
-    } else {
-      if (!EMAIL_PATTERN.test(email.trim())) {
-        setError('Ingresa un correo válido.');
+      if (!password) {
+        setError('Ingresa tu contraseña o entra con un código.');
         return;
       }
-      if (!PHONE_PATTERN.test(phone.trim())) {
-        setError('Ingresa tu celular con indicativo, por ejemplo +57 300 123 4567.');
-        return;
+
+      setBusy(true);
+      try {
+        await loginWithPassword(identifier.trim(), password);
+        router.replace('/home');
+      } catch (caught) {
+        setError(errorMessage(caught));
+      } finally {
+        setBusy(false);
       }
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      setError('Ingresa un correo válido.');
+      return;
+    }
+    if (!PHONE_PATTERN.test(phone.trim())) {
+      setError('Ingresa tu celular con indicativo, por ejemplo +57 300 123 4567.');
+      return;
+    }
+    const passwordError = passwordProblem(password, confirmPassword);
+    if (passwordError) {
+      setError(passwordError);
+      return;
     }
 
     setBusy(true);
     try {
-      if (isLogin) {
-        const response = await startLogin(identifier.trim());
-        setEmailForCode(response.email);
-        setDevCode(response.devCode);
-        setCode('');
-        setStep('login-code');
-        setInfo(`Código enviado a ${response.email}.`);
+      const response = await startSignup({
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        role: isVendor ? 'vendor' : 'buyer',
+      });
+      setSignupId(response.signupId);
+      setEmailForCode(response.email);
+      setDevCode(response.devCode);
+      setCode('');
+      if (response.next === 'verify_phone') {
+        setPhoneForCode(response.phone ?? phone.trim());
+        setStep('phone-code');
+        setInfo('Ya verificaste tu correo. Falta confirmar tu celular.');
       } else {
-        const response = await startSignup({
-          email: email.trim(),
-          phone: phone.trim(),
-          role: isVendor ? 'vendor' : 'buyer',
-        });
-        setSignupId(response.signupId);
-        setEmailForCode(response.email);
-        setDevCode(response.devCode);
-        setCode('');
-        if (response.next === 'verify_phone') {
-          setPhoneForCode(response.phone ?? phone.trim());
-          setStep('phone-code');
-          setInfo('Ya verificaste tu correo. Falta confirmar tu celular.');
-        } else {
-          setStep('email-code');
-          setInfo(`Código enviado a ${response.email}.`);
-        }
+        setStep('email-code');
+        setInfo(`Código enviado a ${response.email}.`);
       }
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleStartOtp() {
+    setError(null);
+    setInfo(null);
+    if (identifier.trim().length < 5) {
+      setError('Ingresa tu correo o tu celular para enviarte el código.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await startLoginOtp(identifier.trim());
+      setEmailForCode(response.email);
+      setDevCode(response.devCode);
+      setCode('');
+      setStep('login-code');
+      setInfo(`Código enviado a ${response.email}.`);
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -162,7 +213,7 @@ export default function AuthScreen() {
         await verifySignupPhone(signupId, code);
         router.replace('/home');
       } else if (step === 'login-code') {
-        await verifyLogin(identifier.trim(), code);
+        await verifyLoginOtp(identifier.trim(), code);
         router.replace('/home');
       }
     } catch (caught) {
@@ -234,13 +285,28 @@ export default function AuthScreen() {
           {step === 'start' ? (
             <View style={styles.form}>
               {isLogin ? (
-                <Field
-                  label="Correo o celular"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  placeholder="ana@correo.com o +57 300 123 4567"
-                  keyboardType="email-address"
-                />
+                <>
+                  <Field
+                    label="Correo o celular"
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                    placeholder="ana@correo.com o +57 300 123 4567"
+                    keyboardType="email-address"
+                  />
+                  <PasswordField
+                    label="Contraseña"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Tu contraseña"
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push('/reset-password')}
+                    style={styles.forgot}
+                  >
+                    <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                  </Pressable>
+                </>
               ) : (
                 <>
                   <Field
@@ -257,20 +323,41 @@ export default function AuthScreen() {
                     placeholder="+57 300 123 4567"
                     keyboardType="phone-pad"
                   />
-                  <View style={styles.note}>
-                    <Text style={styles.noteText}>
-                      Verificamos tu correo con un código. El celular queda registrado; la
-                      verificación por SMS se activa en una fase posterior.
-                    </Text>
-                  </View>
+                  <PasswordField
+                    label="Contraseña"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Mínimo 8 caracteres"
+                  />
+                  <PasswordField
+                    label="Confirmar contraseña"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Repite tu contraseña"
+                  />
+                  <Text style={styles.helper}>
+                    Al menos 8 caracteres, con una letra y un número. Verificaremos tu correo y tu
+                    celular con códigos.
+                  </Text>
                 </>
               )}
 
               <PrimaryButton
-                label={isLogin ? 'Enviar código' : 'Continuar'}
+                label={isLogin ? 'Entrar' : 'Continuar'}
                 busy={busy}
                 onPress={handleStart}
               />
+
+              {isLogin ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={handleStartOtp}
+                  style={styles.secondaryButton}
+                >
+                  <Text style={styles.secondaryText}>Entrar con un código por correo</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             <View style={styles.form}>
@@ -373,6 +460,44 @@ function Field({ label, value, onChangeText, placeholder, keyboardType = 'defaul
   );
 }
 
+function PasswordField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.passwordRow}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#9AA8A4"
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.passwordInput}
+        />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setVisible((current) => !current)}
+          style={styles.showButton}
+        >
+          <Text style={styles.showText}>{visible ? 'Ocultar' : 'Mostrar'}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function PrimaryButton({
   label,
   busy,
@@ -447,6 +572,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingRight: spacing.xs,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: colors.text,
+  },
+  showButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+  showText: { color: colors.brand, fontWeight: '700', fontSize: 12 },
   codeInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -459,6 +602,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
   },
+  helper: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   note: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.md },
   noteText: { color: colors.brandDark, fontSize: 13, lineHeight: 19 },
   devBox: {
@@ -485,9 +629,13 @@ const styles = StyleSheet.create({
   buttonPressed: { backgroundColor: colors.brandDark },
   buttonBusy: { opacity: 0.8 },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  secondaryButton: { alignSelf: 'center', paddingVertical: spacing.sm },
+  secondaryText: { color: colors.brand, fontWeight: '700', fontSize: 14 },
   resend: { alignSelf: 'center', paddingVertical: spacing.xs },
   resendText: { color: colors.brand, fontWeight: '600', fontSize: 14 },
   changeData: { color: colors.muted, fontSize: 13 },
+  forgot: { alignSelf: 'flex-end', paddingVertical: 2 },
+  forgotText: { color: colors.muted, fontSize: 13 },
   infoBox: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.md },
   infoText: { color: colors.brandDark, fontSize: 13, lineHeight: 19 },
   errorBox: { backgroundColor: '#FEF2F2', borderRadius: radius.md, padding: spacing.md },

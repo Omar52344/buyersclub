@@ -1,8 +1,11 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import {
+  loginPasswordSchema,
   loginStartSchema,
   loginVerifySchema,
   otpRequestSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
   refreshTokenSchema,
   signupSchema,
   signupVerifyEmailSchema,
@@ -11,12 +14,15 @@ import {
 import { requireUserId } from '../../lib/auth-guard';
 import {
   getPublicUserById,
+  loginWithPassword,
   logout,
   refreshSession,
+  requestPasswordReset,
   resendOtp,
-  startLogin,
+  resetPassword,
+  startLoginOtp,
   startSignup,
-  verifyLogin,
+  verifyLoginOtp,
   verifySignupEmail,
   verifySignupPhone,
 } from './service';
@@ -46,19 +52,38 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return verifySignupPhone(body, meta(request));
   });
 
-  app.post('/auth/login', async (request) => {
+  app.post(
+    '/auth/login',
+    { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } },
+    async (request) => {
+      const body = loginPasswordSchema.parse(request.body);
+      return loginWithPassword(body, meta(request));
+    },
+  );
+
+  app.post('/auth/login/otp', async (request) => {
     const body = loginStartSchema.parse(request.body);
-    return startLogin(body, meta(request));
+    return startLoginOtp(body, meta(request));
   });
 
-  app.post('/auth/login/verify', async (request) => {
+  app.post('/auth/login/otp/verify', async (request) => {
     const body = loginVerifySchema.parse(request.body);
-    return verifyLogin(body, meta(request));
+    return verifyLoginOtp(body, meta(request));
   });
 
   app.post('/auth/otp/resend', async (request) => {
     const body = otpRequestSchema.parse(request.body);
     return resendOtp(body, meta(request));
+  });
+
+  app.post('/auth/password/reset/request', async (request) => {
+    const body = passwordResetRequestSchema.parse(request.body);
+    return requestPasswordReset(body, meta(request));
+  });
+
+  app.post('/auth/password/reset', async (request) => {
+    const body = passwordResetSchema.parse(request.body);
+    return resetPassword(body, meta(request));
   });
 
   app.post('/auth/refresh', async (request) => {

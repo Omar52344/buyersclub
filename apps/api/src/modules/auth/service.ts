@@ -1,8 +1,11 @@
 import { and, desc, eq, gt, gte, isNull, or, sql } from 'drizzle-orm';
 import type {
+  LoginPasswordInput,
   LoginStartInput,
   LoginVerifyInput,
   OtpRequestInput,
+  PasswordResetInput,
+  PasswordResetRequestInput,
   SignupInput,
   SignupVerifyEmailInput,
   SignupVerifyPhoneInput,
@@ -13,6 +16,7 @@ import { AppError } from '../../errors';
 import { config } from '../../config';
 import { signAccessToken } from '../../lib/tokens';
 import { sendOtpEmail } from '../../lib/mailer';
+import { hashPassword, verifyPassword } from '../../lib/password';
 import {
   generateOtpCode,
   generateRefreshToken,
@@ -262,6 +266,7 @@ export async function startSignup(input: SignupInput, meta: RequestMeta = {}) {
       status: users.status,
       emailVerifiedAt: users.emailVerifiedAt,
       phoneVerifiedAt: users.phoneVerifiedAt,
+      passwordHash: users.passwordHash,
     })
     .from(users)
     .where(or(eq(users.email, email), eq(users.phone, phone)))
@@ -272,7 +277,8 @@ export async function startSignup(input: SignupInput, meta: RequestMeta = {}) {
     if (
       existing.status === 'pending' &&
       existing.email === email &&
-      existing.phone === phone
+      existing.phone === phone &&
+      verifyPassword(input.password, existing.passwordHash)
     ) {
       if (!existing.emailVerifiedAt) {
         const { code } = await issueOtp({
@@ -323,6 +329,7 @@ export async function startSignup(input: SignupInput, meta: RequestMeta = {}) {
       email,
       phone,
       fullName: input.fullName?.trim() || null,
+      passwordHash: hashPassword(input.password),
       status: 'pending',
     })
     .returning();
@@ -423,7 +430,7 @@ export async function verifySignupPhone(
   return issueSession(updated, meta);
 }
 
-export async function startLogin(input: LoginStartInput, meta: RequestMeta = {}) {
+export async function startLoginOtp(input: LoginStartInput, meta: RequestMeta = {}) {
   const user = await findByIdentifier(input.identifier);
   if (!user) {
     throw new AppError('USER_NOT_FOUND', 'No encontramos una cuenta con esos datos.', 404);
@@ -453,7 +460,7 @@ export async function startLogin(input: LoginStartInput, meta: RequestMeta = {})
   return { next: 'verify' as const, email: user.email, devCode: exposedCode(code) };
 }
 
-export async function verifyLogin(
+export async function verifyLoginOtp(
   input: LoginVerifyInput,
   meta: RequestMeta = {},
 ): Promise<SessionPayload> {
@@ -474,6 +481,84 @@ export async function verifyLogin(
 
   await consumeOtp(user.email, 'login', input.code);
   return issueSession(user, meta);
+}
+
+export async function loginWithPassword(
+  input: LoginPasswordInput,
+  meta: RequestMeta = {},
+): Promise<SessionPayload> {
+  const user = await findByIdentifier(input.identifier);
+  if (!user) {
+    throw new AppError('INVALID_CREDENTIALS', 'Correo/celular o contraseña incorrectos.', 401);
+  }
+  if (user.status === 'blocked') {
+    throw new AppError('ACCOUNT_BLOCKED', 'La cuenta está bloqueada.', 403);
+  }
+  if (user.status === 'pending') {
+    throw new AppError(
+      'ACCOUNT_PENDING',
+      'Termina de verificar tu celular para poder entrar.',
+      403,
+    );
+  }
+  if (!user.passwordHash) {
+    throw new AppError(
+      'PASSWORD_NOT_SET',
+      'Esta cuenta no tiene contraseña. Entra con un código.',
+      409,
+    );
+  }
+  if (!verifyPassword(input.password, user.passwordHash)) {
+    throw new AppError('INVALID_CREDENTIALS', 'Correo/celular o contraseña incorrectos.', 401);
+  }
+
+  return issueSession(user, meta);
+}
+
+export async function requestPasswordReset(
+  input: PasswordResetRequestInput,
+  meta: RequestMeta = {},
+) {
+  const email = normalizeEmail(input.email);
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+  // Respuesta genérica: no revelamos si el correo existe.
+  if (!user) {
+    return { sent: true };
+  }
+
+  const { code } = await issueOtp({
+    userId: user.id,
+    channel: 'email',
+    destination: email,
+    purpose: 'reset',
+    meta,
+  });
+
+  return { sent: true, devCode: exposedCode(code) };
+}
+
+export async function resetPassword(input: PasswordResetInput, meta: RequestMeta = {}) {
+  const email = normalizeEmail(input.email);
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  if (!user) {
+    throw new AppError('INVALID_CODE', 'El código no es válido o expiró.', 400);
+  }
+
+  await consumeOtp(user.email, 'reset', input.code);
+
+  await db
+    .update(users)
+    .set({ passwordHash: hashPassword(input.password), updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  // Cerramos todas las sesiones activas por seguridad.
+  await db
+    .update(refreshTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokens.userId, user.id), isNull(refreshTokens.revokedAt)));
+
+  return { ok: true };
 }
 
 export async function resendOtp(input: OtpRequestInput, meta: RequestMeta = {}) {

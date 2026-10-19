@@ -5,6 +5,8 @@ import { ZodError } from 'zod';
 import { AppError } from './errors';
 import { config } from './config';
 import { authRoutes } from './modules/auth/routes';
+import { businessRoutes } from './modules/businesses/routes';
+import { catalogRoutes } from './modules/catalog/routes';
 import { healthRoutes } from './routes/health';
 import { metaRoutes } from './routes/meta';
 
@@ -67,6 +69,8 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/v1' });
+  await app.register(businessRoutes, { prefix: '/v1' });
+  await app.register(catalogRoutes, { prefix: '/v1' });
   await app.register(metaRoutes, { prefix: '/v1' });
 
   return app;

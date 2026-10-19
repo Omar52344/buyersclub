@@ -15,6 +15,20 @@
       "when": 1792383165076,
       "tag": "0001_extensions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792383654720,
+      "tag": "0002_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792383832536,
+      "tag": "0003_product_share",
+      "breakpoints": true
     }
   ]
 }

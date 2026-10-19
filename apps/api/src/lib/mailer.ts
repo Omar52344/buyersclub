@@ -5,6 +5,7 @@ const transport = nodemailer.createTransport(config.SMTP_URL);
 
 const SUBJECTS: Record<string, string> = {
   login: 'Tu código para iniciar sesión en BuyersClub',
+  reset: 'Restablece tu contraseña de BuyersClub',
   verify_email: 'Verifica tu correo en BuyersClub',
   verify_phone: 'Verifica tu celular en BuyersClub',
 };

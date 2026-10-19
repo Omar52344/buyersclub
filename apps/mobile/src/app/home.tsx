@@ -106,6 +106,22 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {isVendor ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/vendor')}
+            style={({ pressed }) => [styles.vendorCta, pressed && styles.vendorCtaPressed]}
+          >
+            <View style={styles.vendorCtaText}>
+              <Text style={styles.vendorCtaTitle}>Mi negocio</Text>
+              <Text style={styles.vendorCtaSubtitle}>
+                Crea tu empresa, sucursales y catálogo
+              </Text>
+            </View>
+            <Text style={styles.vendorArrow}>→</Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             {isVendor ? 'Tu negocio, en 3 pasos' : 'Tu mapa, en 3 pasos'}
@@ -143,10 +159,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>Fase 1 completada</Text>
+          <Text style={styles.footerTitle}>Fase 2 en curso</Text>
           <Text style={styles.footerText}>
-            Registro con correo y celular, códigos de verificación, sesión con refresh token y
-            pantalla de cuenta. Lo siguiente es el onboarding del vendedor y el catálogo.
+            Registro con contraseña, verificación por códigos y sesión segura. Ahora puedes crear
+            tu empresa, sucursales con horario y catálogo compartido entre sedes.
           </Text>
         </View>
       </ScrollView>
@@ -230,6 +246,20 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  vendorCta: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  vendorCtaPressed: { backgroundColor: colors.brandDark },
+  vendorCtaText: { flex: 1, gap: 2 },
+  vendorCtaTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
+  vendorCtaSubtitle: { color: '#D1FAE5', fontSize: 13 },
+  vendorArrow: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
   cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   row: {
     flexDirection: 'row',
