@@ -31,14 +31,14 @@ export default function WelcomeScreen() {
             icon="🛒"
             title="Quiero comprar"
             description="Descubre tiendas abiertas cerca de ti, explora su catálogo y pide a domicilio o para recoger."
-            cta="Entrar como cliente"
+            cta="Registrarme como cliente"
             onPress={() => router.push('/auth?role=buyer')}
           />
           <RoleCard
             icon="🏪"
             title="Quiero vender"
             description="Crea tu empresa y sucursales, publica tu catálogo y recibe pedidos con seguimiento."
-            cta="Entrar como vendedor"
+            cta="Registrarme como vendedor"
             tone="accent"
             onPress={() => router.push('/auth?role=vendor')}
           />
