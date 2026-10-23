@@ -21,8 +21,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBadge } from '../components/status-badge';
 import { API_URL, ApiError } from '../lib/api';
-import type { OrderStatus } from '../lib/orders';
-import { getBusinessOrders, updateOrderStatus, type BusinessOrder } from '../lib/orders';
+import {
+  getBusinessOrders,
+  updateOrderStatus,
+  type BusinessOrder,
+  type OrderStatus,
+} from '../lib/orders';
 import { rejectPayment, validatePayment } from '../lib/payments';
 import { connectRealtime } from '../lib/realtime';
 import { getMyBusinesses, type Business } from '../lib/vendor';

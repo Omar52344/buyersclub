@@ -14,7 +14,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
   SMTP_URL: z.string().default('smtp://localhost:1025'),
-  MAIL_FROM: z.string().default('BuyersClub <no-reply@buyersclub.local>'),
+  MAIL_FROM: z.string().default('ClubSellBuy <no-reply@clubsellbuy.local>'),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   UPLOAD_DIR: z.string().default('.uploads'),
   DEFAULT_TIMEZONE: z.string().default('America/Bogota'),

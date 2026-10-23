@@ -1,4 +1,4 @@
-# BuyersClub
+# ClubSellBuy
 
 Marketplace de comercio local: un mapa vivo de tiendas, catálogos y pedidos con
 entrega en tienda o a domicilio. Compradores y vendedores en una sola app
@@ -187,7 +187,7 @@ auditoría, Helmet y limpieza periódica.
 - Restringe la key en Google Cloud: habilita solo **Maps JavaScript API, Maps SDK
   for Android, Maps SDK for iOS y Geocoding API**; limita referrers web
   (`http://localhost:8081/*` y tu dominio), el package Android
-  (`com.buyersclub.app` + SHA-1) y el bundle iOS (`com.buyersclub.app`).
+  (`com.clubsellbuy.app` + SHA-1) y el bundle iOS (`com.clubsellbuy.app`).
 - Rota cualquier key que se haya compartido por un canal inseguro.
 
 ### QR y pedidos invitados
@@ -208,7 +208,7 @@ auditoría, Helmet y limpieza periódica.
   debe ser el dominio público; en local, `http://localhost:8081`. En hosting
   estático, asegura que `/qr` resuelva a `qr.html` (clean URLs).
 - El enlace web funciona en cualquier navegador. La app tiene la ruta `/qr` y el
-  deep link `buyersclub://qr?token=…`; para que el QR abra la app automáticamente
+  deep link `clubsellbuy://qr?token=…`; para que el QR abra la app automáticamente
   hacen falta universal links (Apple) y app links (Android) con el dominio.
 
 ### Push y archivos

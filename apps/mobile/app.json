@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "BuyersClub",
-    "slug": "buyersclub",
+    "name": "ClubSellBuy",
+    "slug": "clubsellbuy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "buyersclub",
+    "scheme": "clubsellbuy",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.buyersclub.app",
+      "bundleIdentifier": "com.clubsellbuy.app",
       "buildNumber": "1",
       "icon": "./assets/expo.icon",
       "infoPlist": {
@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "com.buyersclub.app",
+      "package": "com.clubsellbuy.app",
       "versionCode": 1,
       "permissions": [
         "ACCESS_COARSE_LOCATION",

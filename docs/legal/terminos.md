@@ -1,4 +1,4 @@
-# Términos y condiciones de uso — BuyersClub
+# Términos y condiciones de uso — ClubSellBuy
 
 **Última actualización:** 19 de octubre de 2026
 **Titular:** [Razón social], NIT [•], domicilio [•], correo [•]
@@ -8,12 +8,12 @@
 
 ## 1. Objeto
 
-BuyersClub es una **plataforma tecnológica de intermediación** que conecta
+ClubSellBuy es una **plataforma tecnológica de intermediación** que conecta
 comercios locales con compradores. Permite descubrir tiendas y catálogos,
 realizar pedidos, coordinar entrega o recogida, conversar y registrar la
 evidencia de un pago realizado **por fuera de la plataforma**.
 
-BuyersClub **no vende productos**, **no es el vendedor**, **no procesa pagos** y
+ClubSellBuy **no vende productos**, **no es el vendedor**, **no procesa pagos** y
 **no garantiza** la calidad, legalidad, disponibilidad ni entrega de los
 productos ofrecidos por los comercios.
 
@@ -38,7 +38,7 @@ productos ofrecidos por los comercios.
 - Si el medio es transferencia, debes subir un comprobante legible. El vendedor
   decide si lo valida o lo rechaza con un motivo.
 - Cualquier reclamación sobre el producto o la entrega se resuelve con el
-  comercio. BuyersClub puede facilitar el historial y el chat.
+  comercio. ClubSellBuy puede facilitar el historial y el chat.
 
 ## 4. Rol de vendedor
 
@@ -49,7 +49,7 @@ productos ofrecidos por los comercios.
 - Debes atender los pedidos y validar los pagos de buena fe.
 - Los precios se publican en la moneda de la empresa (COP o USD) y no incluyen
   conversiones.
-- BuyersClub no cobra comisión en esta fase, pero puede hacerlo en el futuro con
+- ClubSellBuy no cobra comisión en esta fase, pero puede hacerlo en el futuro con
   aviso previo.
 
 ## 5. Pagos
@@ -78,7 +78,7 @@ riesgo para usuarios o para la plataforma.
 
 ## 7. Propiedad intelectual
 
-El software, la marca y el diseño de BuyersClub son de sus titulares. Los
+El software, la marca y el diseño de ClubSellBuy son de sus titulares. Los
 comercios conservan la titularidad de sus marcas, fotos y catálogos, y otorgan
 una licencia para mostrarlos dentro de la plataforma.
 

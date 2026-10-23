@@ -1,19 +1,16 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText } from '../components/ui/app-text';
+import { Banner } from '../components/ui/banner';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Icon } from '../components/ui/icon';
+import { Screen } from '../components/ui/screen';
+import { TextField } from '../components/ui/text-field';
 import { ApiError } from '../lib/api';
 import { requestPasswordReset, resetPassword } from '../lib/auth';
+import { clearSession } from '../lib/token-store';
 import { colors, radius, spacing } from '../theme';
 
 type Step = 'email' | 'reset' | 'done';
@@ -51,6 +48,15 @@ export default function ResetPasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) {
+      return;
+    }
+    const timer = setTimeout(() => setCooldown((current) => Math.max(current - 1, 0)), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   async function handleRequest() {
     setError(null);
@@ -65,6 +71,7 @@ export default function ResetPasswordScreen() {
       const response = await requestPasswordReset(email.trim());
       setDevCode(response.devCode);
       setStep('reset');
+      setCooldown(30);
       setInfo('Si el correo existe, enviamos un código de recuperación.');
     } catch (caught) {
       setError(errorMessage(caught));
@@ -88,6 +95,7 @@ export default function ResetPasswordScreen() {
     setBusy(true);
     try {
       await resetPassword(email.trim(), code, password);
+      await clearSession();
       setStep('done');
     } catch (caught) {
       setError(errorMessage(caught));
@@ -96,234 +104,195 @@ export default function ResetPasswordScreen() {
     }
   }
 
+  async function handleResend() {
+    if (cooldown > 0 || busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await requestPasswordReset(email.trim());
+      setDevCode(response.devCode);
+      setInfo('Enviamos un código nuevo. Revisa tu correo.');
+      setCooldown(30);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === 'done') {
+    return (
+      <Screen edges={['top', 'bottom']} maxWidth={520} contentContainerStyle={styles.content}>
+        <Card style={styles.doneCard}>
+          <View style={styles.doneIcon}>
+            <Icon name="checkmark-circle" size={38} color={colors.success} />
+          </View>
+          <AppText variant="h1" align="center">
+            Contraseña actualizada
+          </AppText>
+          <AppText variant="body" color={colors.muted} align="center">
+            Cerramos las sesiones abiertas por seguridad. Ya puedes entrar con tu nueva contraseña.
+          </AppText>
+          <Button
+            label="Iniciar sesión"
+            onPress={() => router.replace('/auth?mode=login')}
+            fullWidth
+            size="lg"
+            icon="log-in-outline"
+          />
+        </Card>
+      </Screen>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Screen edges={['top', 'bottom']} maxWidth={520} contentContainerStyle={styles.content} keyboardAvoiding>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Volver"
+        onPress={() =>
+          step === 'email'
+            ? router.canGoBack()
+              ? router.back()
+              : router.replace('/auth?mode=login')
+            : setStep('email')
+        }
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
-        <ScrollView contentContainerStyle={styles.content}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => (step === 'email' ? router.back() : setStep('email'))}
-            style={styles.back}
-          >
-            <Text style={styles.backText}>← Volver</Text>
-          </Pressable>
+        <Icon name="arrow-back" size={18} color={colors.text} />
+        <AppText variant="label" color={colors.textSoft}>
+          Volver
+        </AppText>
+      </Pressable>
 
-          {step === 'done' ? (
-            <View style={styles.doneCard}>
-              <Text style={styles.title}>Contraseña actualizada</Text>
-              <Text style={styles.subtitle}>
-                Cerramos las sesiones abiertas por seguridad. Ya puedes entrar con tu nueva
-                contraseña.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.replace('/auth?mode=login')}
-                style={styles.button}
-              >
-                <Text style={styles.buttonText}>Iniciar sesión</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <>
-              <View style={styles.header}>
-                <Text style={styles.eyebrow}>Recuperar acceso</Text>
-                <Text style={styles.title}>
-                  {step === 'email' ? '¿Olvidaste tu contraseña?' : 'Crea una nueva contraseña'}
-                </Text>
-                <Text style={styles.subtitle}>
-                  {step === 'email'
-                    ? 'Escribe el correo de tu cuenta y te enviaremos un código.'
-                    : `Ingresa el código enviado a ${email.trim()} y define tu nueva contraseña.`}
-                </Text>
-              </View>
+      <View style={styles.header}>
+        <AppText variant="micro" color={colors.brand} style={styles.eyebrow}>
+          RECUPERAR ACCESO
+        </AppText>
+        <AppText variant="h1">
+          {step === 'email' ? '¿Olvidaste tu contraseña?' : 'Crea una nueva contraseña'}
+        </AppText>
+        <AppText variant="body" color={colors.muted}>
+          {step === 'email'
+            ? 'Escribe el correo de tu cuenta y te enviaremos un código de recuperación.'
+            : `Ingresa el código enviado a ${email.trim()} y define tu nueva contraseña.`}
+        </AppText>
+      </View>
 
-              <View style={styles.form}>
-                {step === 'email' ? (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Correo electrónico</Text>
-                    <TextInput
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="ana@correo.com"
-                      placeholderTextColor="#9AA8A4"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      style={styles.input}
-                    />
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.field}>
-                      <Text style={styles.label}>Código de 6 dígitos</Text>
-                      <TextInput
-                        value={code}
-                        onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="000000"
-                        placeholderTextColor="#9AA8A4"
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        style={styles.codeInput}
-                      />
-                    </View>
+      {info ? <Banner tone="success" message={info} /> : null}
+      {error ? <Banner tone="danger" title="Revisa los datos" message={error} /> : null}
 
-                    {devCode ? (
-                      <View style={styles.devBox}>
-                        <Text style={styles.devLabel}>Código de desarrollo</Text>
-                        <Text style={styles.devCode}>{devCode}</Text>
-                        <Text style={styles.devHint}>También llega a Mailpit (localhost:8025)</Text>
-                      </View>
-                    ) : null}
+      <View style={styles.form}>
+        {step === 'email' ? (
+          <TextField
+            label="Correo electrónico"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ana@correo.com"
+            icon="mail-outline"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+        ) : (
+          <>
+            <TextField
+              label="Código de 6 dígitos"
+              value={code}
+              onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              icon="keypad-outline"
+              keyboardType="number-pad"
+              maxLength={6}
+              hint="Revisa tu correo, incluida la carpeta de spam."
+            />
+            <Button
+              label={cooldown > 0 ? `Reenviar en ${cooldown}s` : 'Reenviar código'}
+              onPress={handleResend}
+              variant="ghost"
+              size="sm"
+              disabled={cooldown > 0 || busy}
+              icon="refresh-outline"
+            />
 
-                    <View style={styles.field}>
-                      <Text style={styles.label}>Nueva contraseña</Text>
-                      <TextInput
-                        value={password}
-                        onChangeText={setPassword}
-                        placeholder="Mínimo 8 caracteres"
-                        placeholderTextColor="#9AA8A4"
-                        secureTextEntry
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={styles.input}
-                      />
-                    </View>
-                    <View style={styles.field}>
-                      <Text style={styles.label}>Confirmar contraseña</Text>
-                      <TextInput
-                        value={confirmation}
-                        onChangeText={setConfirmation}
-                        placeholder="Repite la contraseña"
-                        placeholderTextColor="#9AA8A4"
-                        secureTextEntry
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={styles.input}
-                      />
-                    </View>
-                  </>
-                )}
-
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={step === 'email' ? handleRequest : handleReset}
-                  style={[styles.button, busy && styles.buttonBusy]}
-                >
-                  {busy ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.buttonText}>
-                      {step === 'email' ? 'Enviar código' : 'Cambiar contraseña'}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-
-              {info ? (
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{info}</Text>
+            {__DEV__ && devCode ? (
+              <Card variant="plain" style={styles.devBox} padding={14}>
+                <View style={styles.devHeader}>
+                  <Icon name="code-slash-outline" size={16} color={colors.brandDark} />
+                  <AppText variant="micro" color={colors.brandDark}>
+                    CÓDIGO DE DESARROLLO
+                  </AppText>
                 </View>
-              ) : null}
+                <AppText variant="h1" color={colors.brandDark} style={styles.devCode}>
+                  {devCode}
+                </AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  También llega a Mailpit (localhost:8025)
+                </AppText>
+              </Card>
+            ) : null}
 
-              {error ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-            </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <TextField
+              label="Nueva contraseña"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mínimo 8 caracteres"
+              icon="lock-closed-outline"
+              secure
+              autoComplete="new-password"
+              hint="Al menos 8 caracteres, con una letra y un número."
+            />
+            <TextField
+              label="Confirmar contraseña"
+              value={confirmation}
+              onChangeText={setConfirmation}
+              placeholder="Repite la contraseña"
+              icon="lock-closed-outline"
+              secure
+              autoComplete="new-password"
+              error={
+                confirmation.length > 0 && confirmation !== password
+                  ? 'Las contraseñas no coinciden.'
+                  : null
+              }
+            />
+          </>
+        )}
+
+        <Button
+          label={step === 'email' ? 'Enviar código' : 'Cambiar contraseña'}
+          onPress={step === 'email' ? handleRequest : handleReset}
+          loading={busy}
+          disabled={busy}
+          fullWidth
+          size="lg"
+          icon={step === 'email' ? 'paper-plane-outline' : 'shield-checkmark-outline'}
+        />
+      </View>
+
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    gap: spacing.lg,
-    maxWidth: 520,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  back: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
-  backText: { color: colors.brand, fontWeight: '600', fontSize: 14 },
-  header: { gap: spacing.sm, marginTop: spacing.sm },
-  eyebrow: {
-    color: colors.brand,
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  title: { fontSize: 30, fontWeight: '800', color: colors.text, letterSpacing: -0.4 },
-  subtitle: { fontSize: 15, lineHeight: 22, color: colors.muted },
+  content: { paddingTop: spacing.sm, gap: spacing.lg, paddingBottom: spacing.xxl },
+  pressed: { opacity: 0.7 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingVertical: 4 },
+  header: { gap: spacing.xs },
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 0.7 },
   form: { gap: spacing.md },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: colors.text,
-  },
-  codeInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 28,
-    letterSpacing: 10,
-    textAlign: 'center',
-    color: colors.text,
-  },
-  devBox: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: 2,
-  },
-  devLabel: { color: colors.brandDark, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  devCode: { color: colors.brandDark, fontSize: 26, fontWeight: '800', letterSpacing: 6 },
-  devHint: { color: colors.muted, fontSize: 11 },
-  button: {
-    backgroundColor: colors.brand,
+  devBox: { alignItems: 'center', gap: 4, backgroundColor: colors.brandTint },
+  devHeader: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  devCode: { letterSpacing: 7, fontSize: 30, lineHeight: 38 },
+  doneCard: { alignItems: 'center', gap: spacing.md, padding: spacing.xl, marginTop: spacing.xl },
+  doneIcon: {
+    width: 76,
+    height: 76,
     borderRadius: radius.pill,
-    paddingVertical: 16,
+    backgroundColor: colors.successSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
-    marginTop: spacing.xs,
-  },
-  buttonBusy: { opacity: 0.8 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  infoBox: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.md },
-  infoText: { color: colors.brandDark, fontSize: 13, lineHeight: 19 },
-  errorBox: { backgroundColor: '#FEF2F2', borderRadius: radius.md, padding: spacing.md },
-  errorText: { color: colors.danger, fontSize: 13, lineHeight: 19 },
-  doneCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-    marginTop: spacing.xl,
   },
 });

@@ -528,7 +528,7 @@ export default function VendorScreen() {
                 </View>
               </View>
               <Text style={styles.muted}>
-                {categoryName ?? 'Sin categoría'} · buyersclub/{business.slug}
+                {categoryName ?? 'Sin categoría'} · clubsellbuy/{business.slug}
               </Text>
               <Text style={styles.muted}>
                 {business.branches.length} sucursales · {products.length} productos
@@ -878,7 +878,6 @@ export default function VendorScreen() {
                             (item) => item.branchId === branch.id,
                           );
                           const enabled = link?.isAvailable === true;
-                          const key = `${product.id}:${branch.id}`;
                           return (
                             <Pressable
                               key={branch.id}

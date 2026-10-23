@@ -4,14 +4,16 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { authedRequest } from './authed';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export async function registerForPush(): Promise<void> {
   if (Platform.OS === 'web' || !Device.isDevice) {

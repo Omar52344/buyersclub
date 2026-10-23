@@ -9,11 +9,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint"
   },
   "dependencies": {
     "@buyersclub/core": "*",
     "@expo/metro-runtime": "~58.0.14",
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~58.0.14",
     "expo-constants": "~58.0.12",
     "expo-device": "~58.0.5",
@@ -38,6 +40,8 @@
     "@types/google.maps": "^3.66.7",
     "@types/react": "~19.3.0",
     "dotenv": "^16.6.1",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3"
   }
 }

@@ -1,22 +1,49 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_TONES, toneStyles } from '../lib/order-labels';
 import type { OrderStatus } from '../lib/orders';
+import { colors } from '../theme';
+import { Badge } from './ui/badge';
+
+type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+
+const TONES: Record<OrderStatus, Tone> = {
+  pending: 'warning',
+  awaiting_payment: 'warning',
+  accepted: 'info',
+  preparing: 'info',
+  ready: 'success',
+  out_for_delivery: 'info',
+  completed: 'success',
+  cancelled: 'danger',
+  rejected: 'danger',
+};
+
+const LABELS: Record<OrderStatus, string> = {
+  pending: 'Recibido',
+  awaiting_payment: 'Esperando pago',
+  accepted: 'Aceptado',
+  preparing: 'Preparando',
+  ready: 'Listo',
+  out_for_delivery: 'En camino',
+  completed: 'Entregado',
+  cancelled: 'Cancelado',
+  rejected: 'Rechazado',
+};
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
-  const tone = toneStyles(ORDER_STATUS_TONES[status]);
-  return (
-    <View style={[styles.badge, { backgroundColor: tone.background }]}>
-      <Text style={[styles.text, { color: tone.text }]}>{ORDER_STATUS_LABELS[status]}</Text>
-    </View>
-  );
+  return <Badge label={LABELS[status]} tone={TONES[status]} dot />;
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    alignSelf: 'flex-start',
-  },
-  text: { fontSize: 11, fontWeight: '800' },
-});
+/** Color plano del estado, para bordes y timelines. */
+export function statusColor(status: OrderStatus): string {
+  switch (TONES[status]) {
+    case 'success':
+      return colors.success;
+    case 'warning':
+      return colors.warning;
+    case 'danger':
+      return colors.danger;
+    case 'info':
+      return colors.info;
+    default:
+      return colors.brand;
+  }
+}

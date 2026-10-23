@@ -8,7 +8,7 @@ dispersos, sin horarios confiables, sin estado del pedido y sin visibilidad de
 qué hay cerca. El comprador, por su lado, no tiene una forma única de responder
 "¿qué tiendas abiertas hay a 10 minutos de mi casa y qué venden?".
 
-BuyersClub propone una **economía colaborativa geolocalizada**:
+ClubSellBuy propone una **economía colaborativa geolocalizada**:
 
 - Un **mapa único** de comercios con catálogo, horario y estado en vivo.
 - **Pedidos** con entrega a domicilio o recogida en tienda, con seguimiento.
@@ -19,7 +19,7 @@ BuyersClub propone una **economía colaborativa geolocalizada**:
 ## 2. Visión de producto
 
 > Ser el mapa de referencia del comercio local: si un producto se vende cerca,
-> aparece en BuyersClub.
+> aparece en ClubSellBuy.
 
 Fase 1 = marketplace funcional, sin monetización ni restricciones de uso. El
 objetivo es **densidad de oferta** (comercios registrados) y **repetibilidad de
@@ -32,7 +32,7 @@ compra** (pedidos por semana), no ingresos.
 | **Comprador** (`buyer`) | Usuario final que descubre y pide | Ver mapa/catálogo, pedir, chatear, subir evidencia de pago, ver sus pedidos e indicadores |
 | **Vendedor dueño** (`vendor_owner`) | Crea la empresa y sus sucursales | Todo lo del vendedor + gestionar sucursales, catálogo, horarios, estado activo, validar pagos |
 | **Vendedor operador** (`vendor_staff`) | Empleado de una sucursal | Ver y gestionar pedidos de su sucursal, chatear, validar pagos. *(Fase 2; el MVP puede operar solo con dueño)* |
-| **Administrador** (`admin`) | Equipo BuyersClub | Moderar comercios, ver métricas globales, soporte. *(Mínimo en MVP: backoffice interno)* |
+| **Administrador** (`admin`) | Equipo ClubSellBuy | Moderar comercios, ver métricas globales, soporte. *(Mínimo en MVP: backoffice interno)* |
 
 Un mismo usuario **puede ser comprador y vendedor** a la vez. El rol no es
 excluyente: al entrar se elige el "modo" (comprador/vendedor) pero la cuenta es

@@ -1,3 +1,3 @@
--- Extensiones necesarias para BuyersClub.
+-- Extensiones necesarias para ClubSellBuy.
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

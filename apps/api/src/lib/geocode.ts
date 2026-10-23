@@ -48,7 +48,7 @@ export async function geocodeAddress(input: GeocodeInput): Promise<Coordinates> 
     url.searchParams.set('limit', '1');
 
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'BuyersClub/0.1 (desarrollo)' },
+      headers: { 'User-Agent': 'ClubSellBuy/0.1 (desarrollo)' },
       signal: controller.signal,
     });
     if (!response.ok) {

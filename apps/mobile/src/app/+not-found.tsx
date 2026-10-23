@@ -1,42 +1,37 @@
-import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../theme';
+import { useRouter } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
+import { AppText } from '../components/ui/app-text';
+import { EmptyState } from '../components/ui/empty-state';
+import { Screen } from '../components/ui/screen';
+import { colors } from '../theme';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Pantalla no encontrada</Text>
-      <Text style={styles.text}>La ruta que buscas no existe en BuyersClub.</Text>
-      <Link href="/" style={styles.link}>
-        Volver al inicio
-      </Link>
-    </View>
+    <Screen
+      maxWidth={520}
+      scroll={false}
+      edges={['top', 'bottom']}
+      contentContainerStyle={styles.content}
+    >
+      <View style={styles.wrap}>
+        <EmptyState
+          icon="compass-outline"
+          title="Esta página no existe"
+          description="La ruta que buscas no está disponible. Vuelve al inicio y sigue explorando."
+          actionLabel="Volver al inicio"
+          actionIcon="home-outline"
+          onAction={() => router.replace('/')}
+        />
+        <AppText variant="caption" color={colors.subtle} align="center">
+          ClubSellBuy · Comercio local
+        </AppText>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  text: {
-    fontSize: 14,
-    color: colors.muted,
-    textAlign: 'center',
-  },
-  link: {
-    marginTop: spacing.md,
-    color: colors.brand,
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  content: { justifyContent: 'center' },
+  wrap: { justifyContent: 'center', gap: 16 },
 });

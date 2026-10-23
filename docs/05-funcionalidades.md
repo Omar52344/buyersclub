@@ -435,7 +435,7 @@ Como administrador quiero suspender un comercio que incumple las reglas.
 ## E12 — Web responsive
 
 ### HU-43 · Usar la app en el navegador (M, 8)
-Como usuario quiero usar BuyersClub desde el navegador con la misma cuenta.
+Como usuario quiero usar ClubSellBuy desde el navegador con la misma cuenta.
 
 - [ ] Mapa, catálogo, pedido, chat y dashboards funcionan en desktop y móvil web.
 - [ ] Layout adaptable (mapa + panel lateral en desktop).

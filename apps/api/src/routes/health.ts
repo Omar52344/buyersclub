@@ -4,7 +4,7 @@ import { sqlClient } from '../db/index';
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
   app.get('/health', async () => ({
     status: 'ok',
-    service: 'buyersclub-api',
+    service: 'clubsellbuy-api',
     version: '0.1.0',
     uptime: Math.round(process.uptime()),
   }));

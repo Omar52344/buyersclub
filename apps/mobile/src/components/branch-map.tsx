@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { BranchMapProps } from './branch-map.types';
 
@@ -127,11 +127,16 @@ export function BranchMap({ branches, onSelect, height = 260 }: BranchMapProps) 
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const onSelectRef = useRef(onSelect);
   const [error, setError] = useState<string | null>(null);
-  onSelectRef.current = onSelect;
+  const setMapNode = useCallback((node: unknown) => {
+    setContainer(node as HTMLElement | null);
+  }, []);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
     if (!container) {
       return;
     }
@@ -141,6 +146,7 @@ export function BranchMap({ branches, onSelect, height = 260 }: BranchMapProps) 
         if (cancelled) {
           return;
         }
+        setError(null);
         const node = container;
         if (!node) {
           return;
@@ -200,7 +206,7 @@ export function BranchMap({ branches, onSelect, height = 260 }: BranchMapProps) 
   return (
     <View style={[styles.container, { height }]}>
       <View
-        ref={(node) => setContainer(node as unknown as HTMLElement | null)}
+        ref={setMapNode}
         style={styles.map}
       />
       {error ? (

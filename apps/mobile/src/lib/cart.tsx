@@ -4,6 +4,8 @@ import { loadCart, saveCart } from './cart-storage';
 
 interface CartContextValue {
   cart: CartState | null;
+  /** `true` cuando el carrito guardado ya se leyó del almacenamiento. */
+  ready: boolean;
   itemCount: number;
   subtotalCents: number;
   addItem: (branch: CartBranch, item: CartItem) => void;
@@ -27,7 +29,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setReady(true);
         }
       })
-      .catch(() => setReady(true));
+      .catch(() => {
+        if (active) {
+          setReady(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -95,7 +101,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ cart, itemCount, subtotalCents, addItem, setQty, removeItem, clear }}
+      value={{ cart, ready, itemCount, subtotalCents, addItem, setQty, removeItem, clear }}
     >
       {children}
     </CartContext.Provider>

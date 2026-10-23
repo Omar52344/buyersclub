@@ -42,7 +42,7 @@ DATABASE_URL=postgres://…
 CORS_ORIGIN=https://app.tudominio.com
 JWT_SECRET=<openssl rand -base64 32>
 SMTP_URL=…
-MAIL_FROM="BuyersClub <no-reply@tudominio.com>"
+MAIL_FROM="ClubSellBuy <no-reply@tudominio.com>"
 GOOGLE_MAPS_API_KEY=…
 S3_ENDPOINT=…
 S3_BUCKET=…
@@ -83,7 +83,7 @@ Recomendaciones:
 
 ## 5. Ficha de tienda
 
-- Nombre: **BuyersClub**.
+- Nombre: **ClubSellBuy**.
 - Categoría: Compras / Estilo de vida.
 - Descripción corta: “Descubre y pide en los comercios cerca de ti”.
 - Capturas: mapa, ficha de tienda, carrito, tracker y chat.
@@ -101,7 +101,7 @@ Recomendaciones:
 
 | Riesgo | Mitigación |
 |---|---|
-| Pagos fuera de la app | Los términos y la ficha declaran que BuyersClub no procesa pagos; los bienes son físicos y el pago se coordina con el comercio |
+| Pagos fuera de la app | Los términos y la ficha declaran que ClubSellBuy no procesa pagos; los bienes son físicos y el pago se coordina con el comercio |
 | Chat de usuarios (UGC) | Reporte/bloqueo y moderación pendientes; monitorear la beta |
 | Eliminación de cuenta | Implementada en **Cuenta y ajustes** |
 | Datos sensibles en comprobantes | Almacenamiento privado con URLs firmadas, retención de 12 meses |

@@ -5,6 +5,8 @@ export interface CartItem {
   name: string;
   unitPriceCents: number;
   qty: number;
+  /** Existencias conocidas al agregar; ayuda a limitar el stepper en el carrito. */
+  stock?: number | null;
 }
 
 export interface CartBranch {

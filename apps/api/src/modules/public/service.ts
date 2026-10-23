@@ -149,7 +149,7 @@ export async function getGuestBranch(token: string) {
     link: {
       token,
       webUrl: `${baseUrl}/qr?token=${encodeURIComponent(token)}`,
-      appUrl: `buyersclub://qr?token=${encodeURIComponent(token)}`,
+      appUrl: `clubsellbuy://qr?token=${encodeURIComponent(token)}`,
     },
   };
 }

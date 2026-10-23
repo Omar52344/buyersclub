@@ -1,86 +1,69 @@
 import { formatMoney } from '@buyersclub/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useState } from 'react';
+import { Image, RefreshControl, StyleSheet, View } from 'react-native';
 import { StatusBadge } from '../components/status-badge';
+import { AppText } from '../components/ui/app-text';
+import { Avatar } from '../components/ui/avatar';
+import { Badge } from '../components/ui/badge';
+import { Banner } from '../components/ui/banner';
+import { Button, IconButton } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { EmptyState } from '../components/ui/empty-state';
+import { Icon, type IconName } from '../components/ui/icon';
+import { Screen } from '../components/ui/screen';
+import { Skeleton } from '../components/ui/skeleton';
+import { TopBar } from '../components/ui/header';
 import { API_URL, ApiError } from '../lib/api';
 import { pickImage, uploadImage } from '../lib/files';
-import { ORDER_STATUS_LABELS } from '../lib/order-labels';
-import {
-  cancelOrder,
-  getOrder,
-  type OrderDetail,
-  type OrderStatus,
-} from '../lib/orders';
+import { ORDER_STATUS_HINTS, dateTimeLabel, timeLabel } from '../lib/format';
+import { cancelOrder, getOrder, type OrderDetail, type OrderStatus } from '../lib/orders';
 import { submitPaymentEvidence } from '../lib/payments';
+import { useResponsive } from '../lib/responsive';
 import { colors, radius, spacing } from '../theme';
 
 function money(cents: number, currency: 'COP' | 'USD'): string {
   return formatMoney({ amountCents: cents, currency });
 }
 
-function dateLabel(value: string | null): string {
-  if (!value) {
-    return '—';
-  }
-  return new Date(value).toLocaleString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 const FINAL: OrderStatus[] = ['completed', 'cancelled', 'rejected'];
+
+type StepKey = 'received' | 'accepted' | 'preparing' | 'onTheWay' | 'done';
 
 export default function OrderScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const id = typeof params.id === 'string' ? params.id : null;
+  const { isTablet } = useResponsive();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const load = useCallback(async () => {
     if (!id) {
       setError('No encontramos el pedido.');
       setLoading(false);
       return;
     }
-    getOrder(id)
-      .then((value) => {
-        if (active) {
-          setOrder(value);
-        }
-      })
-      .catch((caught) => {
-        if (active) {
-          setError(caught instanceof ApiError ? caught.message : 'No pudimos cargar el pedido.');
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      setOrder(await getOrder(id));
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'No pudimos cargar el pedido.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function handleCancel() {
     if (!order) {
@@ -111,11 +94,7 @@ export default function OrderScreen() {
         return;
       }
       const file = await uploadImage(uri);
-      const updated = await submitPaymentEvidence(
-        order.id,
-        file.id,
-        'Comprobante de transferencia',
-      );
+      const updated = await submitPaymentEvidence(order.id, file.id, 'Comprobante de transferencia');
       setOrder(updated);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'No pudimos subir el comprobante.');
@@ -126,225 +105,533 @@ export default function OrderScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.brand} />
-          <Text style={styles.muted}>Cargando pedido…</Text>
-        </View>
-      </SafeAreaView>
+      <Screen edges={['top', 'bottom']} maxWidth={760} contentContainerStyle={styles.loading}>
+        <TopBar title="Pedido" />
+        <Skeleton width="100%" height={150} radiusSize={radius.xl} />
+        <Skeleton width="100%" height={90} radiusSize={radius.lg} />
+        <Skeleton width="100%" height={160} radiusSize={radius.lg} />
+      </Screen>
     );
   }
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.content}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={styles.back}>← Volver</Text>
-          </Pressable>
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error ?? 'No encontramos el pedido.'}</Text>
-          </View>
-        </View>
-      </SafeAreaView>
+      <Screen edges={['top', 'bottom']} maxWidth={560}>
+        <TopBar title="Pedido" />
+        <EmptyState
+          icon="receipt-outline"
+          title="No encontramos el pedido"
+          description={error ?? 'Puede que el enlace haya expirado.'}
+          actionLabel="Ir a mis pedidos"
+          actionIcon="receipt-outline"
+          onAction={() => router.replace('/orders')}
+        />
+      </Screen>
     );
   }
 
   const address = order.deliveryAddress;
+  const cancelled = order.status === 'cancelled' || order.status === 'rejected';
+  const steps = buildSteps(order);
+  const currentIndex = stepIndex(order.status);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topbar}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={styles.back}>←</Text>
-          </Pressable>
-          <Text style={styles.topTitle}>{order.code}</Text>
-          <View style={styles.spacer} />
-        </View>
+    <Screen
+      edges={['top', 'bottom']}
+      maxWidth={820}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            void load();
+          }}
+          tintColor={colors.brand}
+          colors={[colors.brand]}
+        />
+      }
+    >
+      <TopBar
+        title={order.code}
+        right={
+          <IconButton icon="refresh-outline" label="Actualizar pedido" onPress={() => void load()} />
+        }
+      />
 
-        <View style={styles.hero}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.business}>{order.business.name}</Text>
-            <StatusBadge status={order.status} />
+      <View
+        style={[
+          styles.hero,
+          cancelled && styles.heroDanger,
+          order.status === 'completed' && styles.heroSuccess,
+        ]}
+      >
+        <View style={styles.heroTop}>
+          <View style={styles.heroIcon}>
+            <Icon name={statusIcon(order.status)} size={26} color={colors.onBrand} />
           </View>
-          <Text style={styles.muted}>
-            {order.branch.name} · {order.branch.addressLine}, {order.branch.city}
-          </Text>
-          {!FINAL.includes(order.status) && order.etaAt ? (
-            <Text style={styles.eta}>Entrega estimada: {dateLabel(order.etaAt)}</Text>
+          <View style={styles.flex}>
+            <AppText variant="caption" color={colors.brandSoft}>
+              {order.business.name}
+            </AppText>
+            <AppText variant="h1" color={colors.onBrand}>
+              {statusTitle(order.status, order.fulfillment)}
+            </AppText>
+          </View>
+          <StatusBadge status={order.status} />
+        </View>
+        <AppText variant="body" color={colors.onBrandMuted}>
+          {statusHint(order.status, order.fulfillment)}
+        </AppText>
+        <View style={styles.heroMeta}>
+          <View style={styles.heroMetaItem}>
+            <Icon name="time-outline" size={14} color={colors.brandSoft} />
+            <AppText variant="caption" color={colors.brandSoft}>
+              {order.etaAt ? `Entrega estimada ${timeLabel(order.etaAt)}` : dateTimeLabel(order.createdAt)}
+            </AppText>
+          </View>
+          <View style={styles.heroMetaItem}>
+            <Icon
+              name={order.fulfillment === 'delivery' ? 'bicycle-outline' : 'walk-outline'}
+              size={14}
+              color={colors.brandSoft}
+            />
+            <AppText variant="caption" color={colors.brandSoft}>
+              {order.fulfillment === 'delivery' ? 'A domicilio' : 'Recogida'}
+            </AppText>
+          </View>
+        </View>
+      </View>
+
+      {error ? <Banner tone="warning" message={error} /> : null}
+
+      {!cancelled ? (
+        <Card variant="outline" style={styles.trackerCard} padding={18}>
+          <AppText variant="h3">Seguimiento</AppText>
+          <View style={styles.tracker}>
+            {steps.map((step, index) => {
+              const done = index < currentIndex;
+              const active = index === currentIndex;
+              return (
+                <View key={step.key} style={styles.stepWrap}>
+                  {index > 0 ? (
+                    <View
+                      style={[styles.stepLine, index <= currentIndex && styles.stepLineDone]}
+                    />
+                  ) : null}
+                  <View
+                    style={[
+                      styles.stepDot,
+                      done && styles.stepDotDone,
+                      active && styles.stepDotActive,
+                    ]}
+                  >
+                    {done ? (
+                      <Icon name="checkmark" size={12} color={colors.onBrand} />
+                    ) : (
+                      <AppText
+                        variant="micro"
+                        color={active ? colors.onBrand : colors.subtle}
+                        style={styles.stepNumber}
+                      >
+                        {index + 1}
+                      </AppText>
+                    )}
+                  </View>
+                  <AppText
+                    variant="caption"
+                    color={active ? colors.brandDark : done ? colors.textSoft : colors.subtle}
+                    align="center"
+                    style={[styles.stepLabel, active && styles.stepLabelActive]}
+                    numberOfLines={2}
+                  >
+                    {step.label}
+                  </AppText>
+                </View>
+              );
+            })}
+          </View>
+          {order.events.length > 0 ? (
+            <View style={styles.lastEvent}>
+              <Icon name="pulse-outline" size={14} color={colors.muted} />
+              <AppText variant="caption" color={colors.muted}>
+                Última actualización: {dateTimeLabel(order.events[order.events.length - 1]?.at)}
+              </AppText>
+            </View>
           ) : null}
-        </View>
+        </Card>
+      ) : (
+        <Banner
+          tone="danger"
+          title="Pedido cancelado"
+          message={order.cancelReason ?? 'Si tienes dudas, contacta a la tienda desde el chat.'}
+        />
+      )}
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
+      <View style={isTablet ? styles.columns : undefined}>
+        <View style={styles.column}>
+          <Card variant="outline" style={styles.itemsCard} padding={18}>
+            <View style={styles.cardHeader}>
+              <AppText variant="h3">Productos</AppText>
+              <Badge
+                label={`${order.items.length} ${order.items.length === 1 ? 'ítem' : 'ítems'}`}
+                tone="neutral"
+              />
+            </View>
+            {order.items.map((item, index) => (
+              <View key={item.id} style={[styles.itemRow, index > 0 && styles.divider]}>
+                <View style={styles.qtyBadge}>
+                  <AppText variant="micro" color={colors.brandDark}>
+                    {item.qty}×
+                  </AppText>
+                </View>
+                <View style={styles.flex}>
+                  <AppText variant="bodyStrong">{item.name}</AppText>
+                  {item.notes ? (
+                    <AppText variant="caption" color={colors.muted}>
+                      {item.notes}
+                    </AppText>
+                  ) : null}
+                </View>
+                <AppText variant="bodyStrong">{money(item.lineTotalCents, order.currency)}</AppText>
+              </View>
+            ))}
+            <View style={styles.totals}>
+              <Row label="Subtotal" value={money(order.subtotalCents, order.currency)} />
+              {order.deliveryFeeCents > 0 ? (
+                <Row label="Domicilio" value={money(order.deliveryFeeCents, order.currency)} />
+              ) : null}
+              <Row label="Total" value={money(order.totalCents, order.currency)} strong />
+            </View>
+          </Card>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Seguimiento</Text>
-          {order.events.map((event, index) => (
-            <View key={`${event.status}-${index}`} style={styles.eventRow}>
-              <View style={styles.eventMarker}>
-                <View
-                  style={[
-                    styles.eventDot,
-                    index === order.events.length - 1 && styles.eventDotActive,
-                  ]}
+          <Card variant="outline" style={styles.infoCard} padding={18}>
+            <View style={styles.cardHeader}>
+              <View style={styles.infoIcon}>
+                <Icon
+                  name={order.fulfillment === 'delivery' ? 'bicycle-outline' : 'walk-outline'}
+                  size={18}
+                  color={colors.brand}
                 />
               </View>
-              <View style={styles.eventBody}>
-                <Text style={styles.eventTitle}>{ORDER_STATUS_LABELS[event.status]}</Text>
-                {event.note ? <Text style={styles.muted}>{event.note}</Text> : null}
-                <Text style={styles.eventTime}>{dateLabel(event.at)}</Text>
-              </View>
+              <AppText variant="h3">
+                {order.fulfillment === 'delivery' ? 'Entrega a domicilio' : 'Recogida en tienda'}
+              </AppText>
             </View>
-          ))}
+            {order.fulfillment === 'delivery' && address ? (
+              <View style={styles.addressBlock}>
+                <AppText variant="bodyStrong">{address.line1 ?? 'Dirección de entrega'}</AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  {[address.city, address.notes].filter(Boolean).join(' · ')}
+                </AppText>
+                {address.recipientName ? (
+                  <AppText variant="caption" color={colors.muted}>
+                    Recibe: {address.recipientName}
+                    {address.phone ? ` · ${address.phone}` : ''}
+                  </AppText>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.addressBlock}>
+                <AppText variant="bodyStrong">
+                  {order.branch.name} · {order.branch.addressLine}
+                </AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  {order.branch.city}. Te avisaremos cuando esté listo para recoger.
+                </AppText>
+                {order.branch.phone ? (
+                  <AppText variant="caption" color={colors.muted}>
+                    Tel. {order.branch.phone}
+                  </AppText>
+                ) : null}
+              </View>
+            )}
+            {order.notes ? (
+              <View style={styles.addressBlock}>
+                <AppText variant="caption" color={colors.muted}>
+                  Nota para la tienda: {order.notes}
+                </AppText>
+              </View>
+            ) : null}
+          </Card>
+
+          <Card variant="outline" style={styles.infoCard} padding={18}>
+            <View style={styles.cardHeader}>
+              <View style={styles.infoIcon}>
+                <Icon name="wallet-outline" size={18} color={colors.brand} />
+              </View>
+              <AppText variant="h3">Pago</AppText>
+              <Badge
+                label={paymentStatusLabel(order.paymentStatus)}
+                tone={paymentTone(order.paymentStatus)}
+              />
+            </View>
+            <AppText variant="body" color={colors.textSoft}>
+              {paymentMethodLabel(order.paymentMethod)}
+              {order.payment?.note ? ` · ${order.payment.note}` : ''}
+            </AppText>
+
+            {order.payment?.evidenceUrl ? (
+              <View style={styles.evidenceWrap}>
+                <Image
+                  source={{ uri: `${API_URL}${order.payment.evidenceUrl}` }}
+                  style={styles.evidenceImage}
+                  resizeMode="cover"
+                />
+                <Badge
+                  label={
+                    order.paymentStatus === 'validated' ? 'Comprobante validado' : 'Comprobante enviado'
+                  }
+                  tone={order.paymentStatus === 'validated' ? 'success' : 'info'}
+                  icon={order.paymentStatus === 'validated' ? 'checkmark-circle' : 'time'}
+                  style={styles.evidenceBadge}
+                />
+              </View>
+            ) : null}
+
+            {order.payment?.rejectionReason ? (
+              <Banner
+                tone="danger"
+                title="Comprobante rechazado"
+                message={order.payment.rejectionReason}
+              />
+            ) : null}
+
+            {order.viewer === 'buyer' &&
+            order.paymentMethod === 'transfer' &&
+            (order.paymentStatus === 'pending' || order.paymentStatus === 'rejected') &&
+            !FINAL.includes(order.status) ? (
+              <Button
+                label={
+                  order.paymentStatus === 'rejected'
+                    ? 'Subir un nuevo comprobante'
+                    : 'Subir comprobante de pago'
+                }
+                onPress={handleEvidence}
+                loading={uploading}
+                disabled={uploading}
+                icon="cloud-upload-outline"
+                variant="soft"
+                size="sm"
+              />
+            ) : null}
+
+            {order.paymentStatus === 'evidence_submitted' ? (
+              <Banner
+                tone="info"
+                message="La tienda está revisando tu comprobante. Te avisaremos cuando lo valide."
+              />
+            ) : null}
+          </Card>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Productos</Text>
-          {order.items.map((item) => (
-            <View key={item.id} style={styles.itemRow}>
-              <Text style={styles.itemQty}>{item.qty}×</Text>
-              <View style={styles.itemText}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                {item.notes ? <Text style={styles.muted}>{item.notes}</Text> : null}
+        <View style={styles.column}>
+          {order.conversationId ? (
+            <Card
+              onPress={() =>
+                router.push({ pathname: '/chat', params: { id: order.conversationId! } })
+              }
+              variant="brand"
+              padding={18}
+              accessibilityLabel="Abrir chat con la tienda"
+            >
+              <View style={styles.chatRow}>
+                <View style={styles.chatIcon}>
+                  <Icon name="chatbubbles-outline" size={22} color={colors.onBrand} />
+                </View>
+                <View style={styles.flex}>
+                  <AppText variant="h3" color={colors.onBrand}>
+                    Chat con la tienda
+                  </AppText>
+                  <AppText variant="caption" color={colors.onBrandMuted}>
+                    Coordina la entrega, el pago o cualquier detalle.
+                  </AppText>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.brandSoft} />
               </View>
-              <Text style={styles.itemTotal}>
-                {money(item.lineTotalCents, order.currency)}
-              </Text>
-            </View>
-          ))}
-          <View style={styles.divider} />
-          <Row label="Subtotal" value={money(order.subtotalCents, order.currency)} />
-          {order.deliveryFeeCents > 0 ? (
-            <Row label="Domicilio" value={money(order.deliveryFeeCents, order.currency)} />
+            </Card>
           ) : null}
-          <Row label="Total" value={money(order.totalCents, order.currency)} strong />
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {order.fulfillment === 'delivery' ? 'Entrega a domicilio' : 'Recogida en tienda'}
-          </Text>
-          {order.fulfillment === 'delivery' && address ? (
-            <>
-              <Text style={styles.muted}>{address.line1}</Text>
-              {address.line2 ? <Text style={styles.muted}>{address.line2}</Text> : null}
-              <Text style={styles.muted}>{address.city}</Text>
-              {address.recipientName ? (
-                <Text style={styles.muted}>Recibe: {address.recipientName}</Text>
+          <Card variant="outline" style={styles.summaryCard} padding={18}>
+            <View style={styles.summaryRow}>
+              <Avatar name={order.business.name} size={40} square />
+              <View style={styles.flex}>
+                <AppText variant="bodyStrong">{order.business.name}</AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  {order.branch.name}
+                </AppText>
+              </View>
+            </View>
+            <View style={styles.summaryMeta}>
+              <SummaryLine icon="receipt-outline" label="Pedido" value={order.code} />
+              <SummaryLine icon="calendar-outline" label="Creado" value={dateTimeLabel(order.createdAt)} />
+              {order.acceptedAt ? (
+                <SummaryLine icon="checkmark-outline" label="Aceptado" value={dateTimeLabel(order.acceptedAt)} />
               ) : null}
-              {address.notes ? <Text style={styles.muted}>Notas: {address.notes}</Text> : null}
-            </>
-          ) : (
-            <Text style={styles.muted}>
-              Recoges en {order.branch.addressLine}, {order.branch.city}. Te avisaremos cuando el
-              pedido esté listo.
-            </Text>
-          )}
-        </View>
+            </View>
+          </Card>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Pago</Text>
-          <Text style={styles.muted}>
-            {paymentMethodLabel(order.paymentMethod)} · {paymentStatusLabel(order.paymentStatus)}
-          </Text>
-          {order.payment?.evidenceUrl ? (
-            <Image
-              source={{ uri: `${API_URL}${order.payment.evidenceUrl}` }}
-              style={styles.evidenceImage}
-            />
-          ) : null}
-          {order.payment?.note ? (
-            <Text style={styles.muted}>Nota: {order.payment.note}</Text>
-          ) : null}
-          {order.payment?.rejectionReason ? (
-            <Text style={styles.errorText}>
-              Rechazado: {order.payment.rejectionReason}
-            </Text>
-          ) : null}
-          {order.viewer === 'buyer' &&
-          order.paymentMethod === 'transfer' &&
-          (order.paymentStatus === 'pending' || order.paymentStatus === 'rejected') &&
-          !FINAL.includes(order.status) ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={uploading}
-              onPress={handleEvidence}
-              style={[styles.evidenceButton, uploading && styles.disabled]}
-            >
-              {uploading ? (
-                <ActivityIndicator color="#FFFFFF" />
+          {order.canCancel ? (
+            <Card variant="outline" style={styles.cancelCard} padding={18}>
+              <AppText variant="bodyStrong">¿Algo salió mal?</AppText>
+              <AppText variant="caption" color={colors.muted}>
+                Puedes cancelar mientras la tienda no haya iniciado la preparación.
+              </AppText>
+              {confirming ? (
+                <View style={styles.cancelActions}>
+                  <Button
+                    label={busy ? 'Cancelando…' : 'Sí, cancelar pedido'}
+                    onPress={handleCancel}
+                    variant="danger"
+                    loading={busy}
+                    disabled={busy}
+                    size="sm"
+                  />
+                  <Button
+                    label="No, mantener"
+                    onPress={() => setConfirming(false)}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </View>
               ) : (
-                <Text style={styles.evidenceButtonText}>
-                  {order.paymentStatus === 'rejected'
-                    ? 'Subir nuevo comprobante'
-                    : 'Subir comprobante de pago'}
-                </Text>
+                <Button
+                  label="Cancelar pedido"
+                  onPress={() => setConfirming(true)}
+                  variant="dangerSoft"
+                  size="sm"
+                />
               )}
-            </Pressable>
+            </Card>
           ) : null}
-          {order.paymentStatus === 'evidence_submitted' ? (
-            <Text style={styles.muted}>Comprobante en revisión por la tienda.</Text>
-          ) : null}
+
+          <Button
+            label="Volver a mis pedidos"
+            onPress={() => router.push('/orders')}
+            variant="secondary"
+            icon="receipt-outline"
+          />
         </View>
-
-        {order.conversationId ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({ pathname: '/chat', params: { id: order.conversationId } })
-            }
-            style={styles.chatCard}
-          >
-            <View style={styles.chatText}>
-              <Text style={styles.chatTitle}>Chat con la tienda</Text>
-              <Text style={styles.muted}>Coordina la entrega o el pago</Text>
-            </View>
-            <Text style={styles.chatArrow}>→</Text>
-          </Pressable>
-        ) : null}
-
-        {order.canCancel ? (
-          confirming ? (
-            <View style={styles.cancelBox}>
-              <Text style={styles.cancelQuestion}>¿Seguro que quieres cancelar el pedido?</Text>
-              <View style={styles.cancelActions}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={handleCancel}
-                  style={[styles.cancelConfirm, busy && styles.disabled]}
-                >
-                  <Text style={styles.cancelConfirmText}>Sí, cancelar</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setConfirming(false)}
-                  style={styles.cancelBack}
-                >
-                  <Text style={styles.cancelBackText}>No</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setConfirming(true)}
-              style={styles.cancelButton}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar pedido</Text>
-            </Pressable>
-          )
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <View style={styles.row}>
+      <AppText variant={strong ? 'h3' : 'body'} color={strong ? colors.text : colors.muted}>
+        {label}
+      </AppText>
+      <AppText variant={strong ? 'h3' : 'bodyStrong'}>{value}</AppText>
+    </View>
+  );
+}
+
+function SummaryLine({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <View style={styles.summaryLine}>
+      <Icon name={icon} size={14} color={colors.muted} />
+      <AppText variant="caption" color={colors.muted} style={styles.flex}>
+        {label}
+      </AppText>
+      <AppText variant="caption" numberOfLines={1}>
+        {value}
+      </AppText>
+    </View>
+  );
+}
+
+function statusTitle(status: OrderStatus, fulfillment: 'delivery' | 'pickup'): string {
+  switch (status) {
+    case 'pending':
+      return 'Pedido recibido';
+    case 'awaiting_payment':
+      return 'Esperando pago';
+    case 'accepted':
+      return 'Pedido aceptado';
+    case 'preparing':
+      return 'Preparando tu pedido';
+    case 'ready':
+      return fulfillment === 'pickup' ? 'Listo para recoger' : 'Listo para enviar';
+    case 'out_for_delivery':
+      return 'Va en camino';
+    case 'completed':
+      return fulfillment === 'delivery' ? '¡Entregado!' : '¡Recogido!';
+    case 'cancelled':
+      return 'Pedido cancelado';
+    case 'rejected':
+      return 'Pedido rechazado';
+    default:
+      return 'Tu pedido';
+  }
+}
+
+function statusHint(status: OrderStatus, fulfillment: 'delivery' | 'pickup'): string {
+  if (status === 'ready') {
+    return fulfillment === 'pickup'
+      ? 'Tu pedido está listo. ¡Ya puedes recogerlo!'
+      : 'Tu pedido está listo y saldrá pronto a entrega.';
+  }
+  if (status === 'completed') {
+    return fulfillment === 'pickup'
+      ? 'Pedido recogido. ¡Gracias por tu compra!'
+      : 'Pedido entregado. ¡Buen provecho!';
+  }
+  return ORDER_STATUS_HINTS[status];
+}
+
+function statusIcon(status: OrderStatus): IconName {
+  switch (status) {
+    case 'completed':
+      return 'checkmark-done';
+    case 'cancelled':
+    case 'rejected':
+      return 'close-circle';
+    case 'out_for_delivery':
+      return 'bicycle';
+    case 'ready':
+      return 'bag-check';
+    case 'preparing':
+      return 'restaurant';
+    case 'accepted':
+      return 'thumbs-up';
+    case 'awaiting_payment':
+      return 'wallet';
+    default:
+      return 'receipt';
+  }
+}
+
+function stepIndex(status: OrderStatus): number {
+  switch (status) {
+    case 'pending':
+    case 'awaiting_payment':
+      return 0;
+    case 'accepted':
+      return 1;
+    case 'preparing':
+      return 2;
+    case 'ready':
+    case 'out_for_delivery':
+      return 3;
+    case 'completed':
+      return 4;
+    default:
+      return -1;
+  }
+}
+
+function buildSteps(order: OrderDetail): { key: StepKey; label: string }[] {
+  const pickup = order.fulfillment === 'pickup';
+  return [
+    { key: 'received', label: 'Recibido' },
+    { key: 'accepted', label: 'Aceptado' },
+    { key: 'preparing', label: 'Preparando' },
+    { key: 'onTheWay', label: pickup ? 'Listo' : 'Listo para salir' },
+    { key: 'done', label: pickup ? 'Recogido' : 'Entregado' },
+  ];
+}
 
 function paymentMethodLabel(method: string): string {
   switch (method) {
@@ -355,151 +642,146 @@ function paymentMethodLabel(method: string): string {
     case 'transfer':
       return 'Transferencia';
     default:
-      return 'Otro';
+      return 'Otro medio';
   }
 }
 
 function paymentStatusLabel(status: string): string {
   switch (status) {
     case 'validated':
-      return 'pago validado';
+      return 'Pago validado';
     case 'evidence_submitted':
-      return 'comprobante en revisión';
+      return 'En revisión';
     case 'rejected':
-      return 'pago rechazado';
+      return 'Rechazado';
     case 'refunded':
-      return 'reembolsado';
+      return 'Reembolsado';
     default:
-      return 'pago pendiente';
+      return 'Pago pendiente';
   }
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
-      <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
-    </View>
-  );
+function paymentTone(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  switch (status) {
+    case 'validated':
+      return 'success';
+    case 'evidence_submitted':
+      return 'info';
+    case 'rejected':
+      return 'danger';
+    case 'pending':
+      return 'warning';
+    default:
+      return 'neutral';
+  }
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: {
+  loading: { paddingTop: spacing.md, gap: spacing.md },
+  content: { paddingTop: 0, gap: spacing.md },
+  flex: { flex: 1 },
+  hero: {
+    backgroundColor: colors.brand,
+    borderRadius: radius.xl,
     padding: spacing.lg,
-    gap: spacing.md,
-    maxWidth: 720,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 22, color: colors.brand, fontWeight: '700' },
-  topTitle: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: 0.5 },
-  spacer: { width: 22 },
-  hero: { gap: 4, marginTop: spacing.sm },
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  business: { fontSize: 24, fontWeight: '800', color: colors.text, flexShrink: 1 },
-  muted: { color: colors.muted, fontSize: 13, lineHeight: 19 },
-  eta: { color: colors.brandDark, fontSize: 13, fontWeight: '700', marginTop: 4 },
-  card: {
-    backgroundColor: colors.surface,
+  heroDanger: { backgroundColor: colors.dangerDark },
+  heroSuccess: { backgroundColor: colors.successDark },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  heroIcon: {
+    width: 50,
+    height: 50,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 2 },
-  eventRow: { flexDirection: 'row', gap: spacing.md },
-  eventMarker: { alignItems: 'center', width: 14 },
-  eventDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
+  heroMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: 2 },
+  heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  trackerCard: { gap: spacing.md },
+  tracker: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4 },
+  stepWrap: { flex: 1, alignItems: 'center', gap: 5, position: 'relative' },
+  stepLine: {
+    position: 'absolute',
+    top: 13,
+    right: '50%',
+    left: '-50%',
+    height: 3,
     backgroundColor: colors.border,
-    marginTop: 4,
   },
-  eventDotActive: { backgroundColor: colors.brand },
-  eventBody: { flex: 1, paddingBottom: spacing.md, gap: 1 },
-  eventTitle: { fontSize: 13, fontWeight: '700', color: colors.text },
-  eventTime: { fontSize: 11, color: colors.muted },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    paddingVertical: 4,
+  stepLineDone: { backgroundColor: colors.brand },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
-  itemQty: { color: colors.muted, fontSize: 13, fontWeight: '700', minWidth: 24 },
-  itemText: { flex: 1, gap: 1 },
-  itemName: { fontSize: 13, fontWeight: '600', color: colors.text },
-  itemTotal: { fontSize: 13, fontWeight: '700', color: colors.text },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  rowLabel: { color: colors.muted, fontSize: 13 },
-  rowValue: { color: colors.text, fontSize: 13, fontWeight: '600' },
-  rowStrong: { fontSize: 16, fontWeight: '800', color: colors.text },
-  chatCard: {
-    backgroundColor: colors.brandSoft,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+  stepDotDone: { backgroundColor: colors.brand, borderColor: colors.brand },
+  stepDotActive: { backgroundColor: colors.brand, borderColor: colors.brandSoft },
+  stepNumber: { fontSize: 10 },
+  stepLabel: { fontSize: 10, lineHeight: 13 },
+  stepLabelActive: { fontWeight: '800' },
+  lastEvent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    gap: 5,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
   },
-  chatText: { flex: 1, gap: 2 },
-  chatArrow: { color: colors.brandDark, fontSize: 20, fontWeight: '700' },
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  column: { flex: 1, gap: spacing.md },
+  itemsCard: { gap: spacing.sm },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 2 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 4 },
+  divider: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, marginTop: 4 },
+  qtyBadge: {
+    minWidth: 30,
+    paddingVertical: 4,
+    paddingHorizontal: 7,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brandTint,
+    alignItems: 'center',
+  },
+  totals: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: 7, marginTop: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  infoCard: { gap: spacing.sm },
+  infoIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    backgroundColor: colors.brandTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addressBlock: { gap: 2 },
+  evidenceWrap: { gap: 6 },
   evidenceImage: {
     width: '100%',
-    height: 180,
+    height: 190,
     borderRadius: radius.md,
     backgroundColor: colors.bg,
-    resizeMode: 'contain',
   },
-  evidenceButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.pill,
-    paddingVertical: 12,
+  evidenceBadge: { alignSelf: 'flex-start' },
+  chatRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  chatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  evidenceButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
-  chatTitle: { color: colors.brandDark, fontSize: 14, fontWeight: '800' },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: radius.pill,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  cancelButtonText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
-  cancelBox: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cancelQuestion: { color: colors.danger, fontWeight: '700', fontSize: 14 },
-  cancelActions: { flexDirection: 'row', gap: spacing.sm },
-  cancelConfirm: {
-    backgroundColor: colors.danger,
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  cancelConfirmText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
-  cancelBack: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  cancelBackText: { color: colors.muted, fontWeight: '700', fontSize: 13 },
-  disabled: { opacity: 0.6 },
-  errorBox: { backgroundColor: '#FEF2F2', borderRadius: radius.md, padding: spacing.md },
-  errorText: { color: colors.danger, fontSize: 13, lineHeight: 19 },
+  summaryCard: { gap: spacing.sm },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  summaryMeta: { gap: 7, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
+  summaryLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cancelCard: { gap: spacing.sm },
+  cancelActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

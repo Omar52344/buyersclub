@@ -2,7 +2,7 @@
 
 ## 1. Convenciones
 
-- Base: `https://api.buyersclub.app/v1` (staging: `api.staging...`).
+- Base: `https://api.clubsellbuy.app/v1` (staging: `api.staging...`).
 - JSON en `camelCase`; fechas ISO-8601 UTC (`2026-01-31T14:05:00Z`).
 - Dinero: `{ "amountCents": 1250000, "currency": "COP" }` en respuestas
   financieras; los endpoints de escritura aceptan `amountCents`.

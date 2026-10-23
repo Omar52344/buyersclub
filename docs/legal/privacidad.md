@@ -1,4 +1,4 @@
-# Política de privacidad — BuyersClub
+# Política de privacidad — ClubSellBuy
 
 **Última actualización:** 19 de octubre de 2026
 **Responsable:** [Razón social], NIT [•], correo [•]

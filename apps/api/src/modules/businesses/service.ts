@@ -278,7 +278,7 @@ export async function getBranchQr(userId: string, branchId: string) {
 
   const baseUrl = config.PUBLIC_APP_URL.replace(/\/$/, '');
   const url = `${baseUrl}/qr?token=${encodeURIComponent(token)}`;
-  const appUrl = `buyersclub://qr?token=${encodeURIComponent(token)}`;
+  const appUrl = `clubsellbuy://qr?token=${encodeURIComponent(token)}`;
   const qrDataUrl = await QRCode.toDataURL(url, {
     margin: 1,
     width: 512,

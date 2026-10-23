@@ -1,17 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
+import { AppText } from '../components/ui/app-text';
+import { Banner } from '../components/ui/banner';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Icon } from '../components/ui/icon';
+import { Screen } from '../components/ui/screen';
+import { TextField } from '../components/ui/text-field';
 import { ApiError } from '../lib/api';
 import {
   loginWithPassword,
@@ -25,6 +21,8 @@ import {
 import { colors, radius, spacing } from '../theme';
 
 type Step = 'start' | 'email-code' | 'phone-code' | 'login-code';
+type Mode = 'signup' | 'login';
+type Role = 'buyer' | 'vendor';
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 const PHONE_PATTERN = /^\+?[\d\s-]{8,18}$/;
@@ -64,9 +62,9 @@ function passwordProblem(password: string, confirmation: string): string | null 
 export default function AuthScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: string; mode?: string }>();
-  const isVendor = params.role === 'vendor';
-  const isLogin = params.mode === 'login';
 
+  const [mode, setMode] = useState<Mode>(params.mode === 'login' ? 'login' : 'signup');
+  const [role, setRole] = useState<Role>(params.role === 'vendor' ? 'vendor' : 'buyer');
   const [step, setStep] = useState<Step>('start');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -81,24 +79,24 @@ export default function AuthScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
-  const stepNumber = isLogin
-    ? step === 'start'
-      ? 1
-      : 2
-    : step === 'start'
-      ? 1
-      : step === 'email-code'
-        ? 2
-        : 3;
+  const isLogin = mode === 'login';
+  const isVendor = role === 'vendor';
+
+  useEffect(() => {
+    if (cooldown <= 0) {
+      return;
+    }
+    const timer = setTimeout(() => setCooldown((current) => current - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const stepNumber = isLogin ? (step === 'start' ? 1 : 2) : step === 'start' ? 1 : step === 'email-code' ? 2 : 3;
   const totalSteps = isLogin ? 2 : 3;
 
   const titles: Record<Step, string> = {
-    start: isLogin
-      ? 'Iniciar sesión'
-      : isVendor
-        ? 'Crea tu cuenta de vendedor'
-        : 'Crea tu cuenta de comprador',
+    start: isLogin ? 'Bienvenido de nuevo' : isVendor ? 'Crea tu cuenta de vendedor' : 'Crea tu cuenta',
     'email-code': 'Verifica tu correo',
     'phone-code': 'Verifica tu celular',
     'login-code': 'Revisa tu correo',
@@ -108,12 +106,20 @@ export default function AuthScreen() {
     start: isLogin
       ? 'Entra con tu contraseña o recibe un código por correo.'
       : isVendor
-        ? 'Crea tu contraseña y verifica tu correo y celular. Después registrarás tu empresa.'
-        : 'Crea tu contraseña y verifica tu correo y celular para empezar a pedir.',
+        ? 'Crea tu contraseña y verifica tus datos. Después registrarás tu empresa.'
+        : 'Crea tu contraseña y verifica tus datos para empezar a pedir.',
     'email-code': `Ingresa el código de 6 dígitos que enviamos a ${emailForCode}.`,
-    'phone-code': `Ingresa el código de 6 dígitos para ${phoneForCode}. En esta fase no enviamos SMS: el código se muestra abajo y queda registrado en la base.`,
+    'phone-code': `Confirma el código enviado a ${phoneForCode}.`,
     'login-code': `Enviamos un código de 6 dígitos a ${emailForCode}.`,
   };
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setStep('start');
+    setError(null);
+    setInfo(null);
+    setCode('');
+  }
 
   async function handleStart() {
     setError(null);
@@ -175,6 +181,7 @@ export default function AuthScreen() {
       setEmailForCode(response.email);
       setDevCode(response.devCode);
       setCode('');
+      setCooldown(30);
       if (response.next === 'verify_phone') {
         setPhoneForCode(response.phone ?? phone.trim());
         setStep('phone-code');
@@ -212,6 +219,7 @@ export default function AuthScreen() {
       setDevCode(response.devCode);
       setCode('');
       setStep('login-code');
+      setCooldown(30);
       setInfo(`Código enviado a ${response.email}.`);
     } catch (caught) {
       setError(errorMessage(caught));
@@ -235,15 +243,14 @@ export default function AuthScreen() {
         setDevCode(response.devCode);
         setCode('');
         setStep('phone-code');
+        setCooldown(30);
         setInfo(`Correo verificado. Ahora confirma tu celular ${response.phone}.`);
       } else if (step === 'phone-code' && signupId) {
         await verifySignupPhone(signupId, code);
         router.replace('/home');
       } else if (step === 'login-code') {
         await verifyLoginOtp(
-          identifier.trim().includes('@')
-            ? identifier.trim()
-            : toE164(identifier.trim()),
+          identifier.trim().includes('@') ? identifier.trim() : toE164(identifier.trim()),
           code,
         );
         router.replace('/home');
@@ -256,23 +263,22 @@ export default function AuthScreen() {
   }
 
   async function handleResend() {
+    if (cooldown > 0) {
+      return;
+    }
     setError(null);
     setInfo(null);
     setBusy(true);
     try {
       const destination =
-        step === 'phone-code'
-          ? phoneForCode
-          : step === 'login-code'
-            ? emailForCode
-            : emailForCode || email;
+        step === 'phone-code' ? phoneForCode : step === 'login-code' ? emailForCode : emailForCode || email;
       const response = await resendOtp({
         channel: step === 'phone-code' ? 'sms' : 'email',
         destination,
-        purpose:
-          step === 'phone-code' ? 'verify_phone' : step === 'login-code' ? 'login' : 'verify_email',
+        purpose: step === 'phone-code' ? 'verify_phone' : step === 'login-code' ? 'login' : 'verify_email',
       });
       setDevCode(response.devCode);
+      setCooldown(30);
       setInfo('Código reenviado. Revisa tu correo.');
     } catch (caught) {
       setError(errorMessage(caught));
@@ -282,395 +288,470 @@ export default function AuthScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Screen edges={['top', 'bottom']} maxWidth={520} contentContainerStyle={styles.content} keyboardAvoiding>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Volver al inicio"
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Volver al inicio"
-            onPress={() => router.back()}
-            style={styles.back}
-          >
-            <Text style={styles.backText}>← Volver</Text>
-          </Pressable>
+        <Icon name="arrow-back" size={18} color={colors.text} />
+        <AppText variant="label" color={colors.textSoft}>
+          Volver
+        </AppText>
+      </Pressable>
 
-          <View style={styles.header}>
-            <Text style={styles.stepText}>
-              Paso {stepNumber} de {totalSteps}
-            </Text>
-            <Text style={styles.title}>{titles[step]}</Text>
-            <Text style={styles.subtitle}>{subtitles[step]}</Text>
-          </View>
+      <View style={styles.brandRow}>
+        <View style={styles.logo}>
+          <Icon name="storefront" size={20} color={colors.onBrand} />
+        </View>
+        <AppText variant="h3">ClubSellBuy</AppText>
+      </View>
 
-          <View style={styles.progress}>
-            {Array.from({ length: totalSteps }).map((_, index) => (
-              <View
-                key={`step-${index}`}
-                style={[styles.progressDot, index < stepNumber && styles.progressDotActive]}
+      <View style={styles.header}>
+        <AppText variant="micro" color={colors.brand} style={styles.stepText}>
+          {step === 'start' ? (isLogin ? 'INICIAR SESIÓN' : `PASO ${stepNumber} DE ${totalSteps}`) : `PASO ${stepNumber} DE ${totalSteps}`}
+        </AppText>
+        <AppText variant="h1">{titles[step]}</AppText>
+        <AppText variant="body" color={colors.muted}>
+          {subtitles[step]}
+        </AppText>
+      </View>
+
+      <View style={styles.progress}>
+        {Array.from({ length: totalSteps }).map((_, index) => (
+          <View
+            key={`step-${index}`}
+            style={[styles.progressBar, index < stepNumber && styles.progressBarActive]}
+          />
+        ))}
+      </View>
+
+      {step === 'start' && !isLogin ? (
+        <View style={styles.roleSwitch}>
+          <RolePill
+            label="Comprar"
+            icon="bag-handle-outline"
+            selected={role === 'buyer'}
+            onPress={() => setRole('buyer')}
+          />
+          <RolePill
+            label="Vender"
+            icon="storefront-outline"
+            selected={role === 'vendor'}
+            onPress={() => setRole('vendor')}
+          />
+        </View>
+      ) : null}
+
+      {step === 'start' ? (
+        <View style={styles.form}>
+          {isLogin ? (
+            <>
+              <TextField
+                label="Correo o celular"
+                value={identifier}
+                onChangeText={setIdentifier}
+                placeholder="ana@correo.com o +57 300 123 4567"
+                icon="person-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="username"
+                textContentType="username"
               />
-            ))}
-          </View>
-
-          {step === 'start' ? (
-            <View style={styles.form}>
-              {isLogin ? (
-                <>
-                  <Field
-                    label="Correo o celular"
-                    value={identifier}
-                    onChangeText={setIdentifier}
-                    placeholder="ana@correo.com o +57 300 123 4567"
-                    keyboardType="email-address"
-                  />
-                  <PasswordField
-                    label="Contraseña"
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Tu contraseña"
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push('/reset-password')}
-                    style={styles.forgot}
-                  >
-                    <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Field
-                    label="Correo electrónico"
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="ana@correo.com"
-                    keyboardType="email-address"
-                  />
-                  <Field
-                    label="Celular"
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="+57 300 123 4567"
-                    keyboardType="phone-pad"
-                  />
-                  <PasswordField
-                    label="Contraseña"
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Mínimo 8 caracteres"
-                  />
-                  <PasswordField
-                    label="Confirmar contraseña"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Repite tu contraseña"
-                  />
-                  <Text style={styles.helper}>
-                    Al menos 8 caracteres, con una letra y un número. Verificaremos tu correo y tu
-                    celular con códigos.
-                  </Text>
-                </>
-              )}
-
-              <PrimaryButton
-                label={isLogin ? 'Entrar' : 'Continuar'}
-                busy={busy}
-                onPress={handleStart}
+              <TextField
+                label="Contraseña"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Tu contraseña"
+                icon="lock-closed-outline"
+                secure
+                autoComplete="current-password"
               />
-
-              {isLogin ? (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={handleStartOtp}
-                  style={styles.secondaryButton}
-                >
-                  <Text style={styles.secondaryText}>Entrar con un código por correo</Text>
-                </Pressable>
-              ) : null}
-            </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/reset-password')}
+                style={({ pressed }) => [styles.forgot, pressed && styles.pressed]}
+              >
+                <AppText variant="caption" color={colors.brand}>
+                  ¿Olvidaste tu contraseña?
+                </AppText>
+              </Pressable>
+            </>
           ) : (
-            <View style={styles.form}>
-              <View style={styles.field}>
-                <Text style={styles.label}>Código de 6 dígitos</Text>
-                <TextInput
-                  value={code}
-                  onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000000"
-                  placeholderTextColor="#9AA8A4"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoFocus
-                  style={styles.codeInput}
-                />
-              </View>
-
-              {devCode ? (
-                <View style={styles.devBox}>
-                  <Text style={styles.devLabel}>Código de desarrollo</Text>
-                  <Text style={styles.devCode}>{devCode}</Text>
-                  <Text style={styles.devHint}>
-                    También llega a Mailpit en http://localhost:8025
-                  </Text>
-                </View>
-              ) : null}
-
-              <PrimaryButton label="Verificar" busy={busy} onPress={handleVerify} />
-
-              <Pressable
-                accessibilityRole="button"
-                disabled={busy}
-                onPress={handleResend}
-                style={styles.resend}
-              >
-                <Text style={styles.resendText}>Reenviar código</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setStep('start');
-                  setCode('');
-                  setError(null);
-                  setInfo(null);
-                }}
-                style={styles.resend}
-              >
-                <Text style={styles.changeData}>Usar otros datos</Text>
-              </Pressable>
-            </View>
+            <>
+              <TextField
+                label="Correo electrónico"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="ana@correo.com"
+                icon="mail-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+              <TextField
+                label="Celular"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+57 300 123 4567"
+                icon="call-outline"
+                keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
+              />
+              <TextField
+                label="Contraseña"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Mínimo 8 caracteres"
+                icon="lock-closed-outline"
+                secure
+                autoComplete="new-password"
+                hint="Al menos 8 caracteres, con una letra y un número."
+              />
+              <PasswordStrength password={password} />
+              <TextField
+                label="Confirmar contraseña"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repite tu contraseña"
+                icon="lock-closed-outline"
+                secure
+                autoComplete="new-password"
+                error={
+                  confirmPassword.length > 0 && confirmPassword !== password
+                    ? 'Las contraseñas no coinciden.'
+                    : null
+                }
+              />
+            </>
           )}
 
-          {info ? (
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>{info}</Text>
-            </View>
+          {info ? <Banner tone="success" message={info} /> : null}
+          {error ? <Banner tone="danger" title="Revisa los datos" message={error} /> : null}
+
+          <Button
+            label={isLogin ? 'Entrar' : 'Crear mi cuenta'}
+            onPress={handleStart}
+            loading={busy}
+            disabled={busy}
+            fullWidth
+            size="lg"
+            icon={isLogin ? 'log-in-outline' : 'arrow-forward'}
+          />
+
+          {isLogin ? (
+            <Button
+              label="Entrar con un código por correo"
+              onPress={handleStartOtp}
+              disabled={busy}
+              variant="secondary"
+              fullWidth
+              icon="mail-unread-outline"
+            />
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.form}>
+          <View style={styles.otpWrap}>
+            <AppText variant="label" color={colors.textSoft}>
+              Código de 6 dígitos
+            </AppText>
+            <OtpInput value={code} onChange={setCode} />
+          </View>
+
+          {__DEV__ && devCode ? (
+            <Card variant="plain" style={styles.devBox} padding={14}>
+              <View style={styles.devHeader}>
+                <Icon name="code-slash-outline" size={16} color={colors.brandDark} />
+                <AppText variant="micro" color={colors.brandDark}>
+                  CÓDIGO DE DESARROLLO
+                </AppText>
+              </View>
+              <AppText variant="h1" color={colors.brandDark} style={styles.devCode}>
+                {devCode}
+              </AppText>
+              <AppText variant="caption" color={colors.muted} align="center">
+                También llega a Mailpit en http://localhost:8025
+              </AppText>
+            </Card>
           ) : null}
 
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
+          {info ? <Banner tone="success" message={info} /> : null}
+          {error ? <Banner tone="danger" title="Revisa los datos" message={error} /> : null}
 
-          {step === 'start' && isVendor ? (
-            <Text style={styles.hint}>
-              Siguiente: nombre de la empresa, sucursales y horarios de atención.
-            </Text>
-          ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <Button
+            label="Verificar código"
+            onPress={handleVerify}
+            loading={busy}
+            disabled={busy || code.length !== 6}
+            fullWidth
+            size="lg"
+            icon="checkmark-circle-outline"
+          />
+
+          <View style={styles.resendRow}>
+            <AppText variant="caption" color={colors.muted}>
+              ¿No recibiste el código?
+            </AppText>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy || cooldown > 0}
+              onPress={handleResend}
+              style={({ pressed }) => [styles.resendButton, pressed && styles.pressed]}
+            >
+              <AppText
+                variant="caption"
+                color={cooldown > 0 ? colors.subtle : colors.brand}
+                style={styles.resendText}
+              >
+                {cooldown > 0 ? `Reenviar en ${cooldown}s` : 'Reenviar código'}
+              </AppText>
+            </Pressable>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setStep('start');
+              setCode('');
+              setError(null);
+              setInfo(null);
+              setCooldown(0);
+            }}
+            style={({ pressed }) => [styles.changeData, pressed && styles.pressed]}
+          >
+            <Icon name="create-outline" size={14} color={colors.muted} />
+            <AppText variant="caption" color={colors.muted}>
+              Usar otros datos
+            </AppText>
+          </Pressable>
+        </View>
+      )}
+
+      {step === 'start' ? (
+        <View style={styles.switchRow}>
+          <AppText variant="caption" color={colors.muted}>
+            {isLogin ? '¿Aún no tienes cuenta?' : '¿Ya tienes cuenta?'}
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => switchMode(isLogin ? 'signup' : 'login')}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <AppText variant="caption" color={colors.brand} style={styles.switchLink}>
+              {isLogin ? 'Regístrate gratis' : 'Inicia sesión'}
+            </AppText>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {step === 'start' && isVendor ? (
+        <Card variant="plain" style={styles.vendorHint} padding={14}>
+          <Icon name="storefront-outline" size={18} color={colors.brand} />
+          <AppText variant="caption" color={colors.textSoft} style={styles.flex}>
+            Siguiente paso: nombre de la empresa, sucursales y horarios de atención.
+          </AppText>
+        </Card>
+      ) : null}
+
+      <AppText variant="caption" color={colors.subtle} align="center" style={styles.legal}>
+        Al continuar aceptas los términos de uso y la política de privacidad de ClubSellBuy.
+      </AppText>
+    </Screen>
   );
 }
 
-interface FieldProps {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-}
-
-function Field({ label, value, onChangeText, placeholder, keyboardType = 'default' }: FieldProps) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#9AA8A4"
-        keyboardType={keyboardType}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={styles.input}
-      />
-    </View>
-  );
-}
-
-function PasswordField({
+function RolePill({
   label,
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.passwordRow}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor="#9AA8A4"
-          secureTextEntry={!visible}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.passwordInput}
-        />
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setVisible((current) => !current)}
-          style={styles.showButton}
-        >
-          <Text style={styles.showText}>{visible ? 'Ocultar' : 'Mostrar'}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function PrimaryButton({
-  label,
-  busy,
+  icon,
+  selected,
   onPress,
 }: {
   label: string;
-  busy: boolean;
+  icon: 'bag-handle-outline' | 'storefront-outline';
+  selected: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ busy }}
-      disabled={busy}
+      accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.buttonPressed,
-        busy && styles.buttonBusy,
-      ]}
+      style={({ pressed }) => [styles.rolePill, selected && styles.rolePillSelected, pressed && styles.pressed]}
     >
-      {busy ? (
-        <ActivityIndicator color="#FFFFFF" />
-      ) : (
-        <Text style={styles.buttonText}>{label}</Text>
-      )}
+      <View style={[styles.roleIcon, selected && styles.roleIconSelected]}>
+        <Icon name={icon} size={18} color={selected ? colors.brand : colors.muted} />
+      </View>
+      <AppText variant="label" color={selected ? colors.brandDark : colors.muted}>
+        {label}
+      </AppText>
     </Pressable>
   );
 }
 
+function PasswordStrength({ password }: { password: string }) {
+  if (!password) {
+    return null;
+  }
+  const checks = [password.length >= 8, /[A-Za-z]/.test(password), /\d/.test(password)];
+  const score = checks.filter(Boolean).length;
+  return (
+    <View style={styles.strengthRow}>
+      {[0, 1, 2].map((index) => (
+        <View
+          key={`strength-${index}`}
+          style={[
+            styles.strengthBar,
+            index < score && (score < 2 ? styles.strengthWeak : score < 3 ? styles.strengthMid : styles.strengthStrong),
+          ]}
+        />
+      ))}
+      <AppText variant="caption" color={colors.muted}>
+        {score < 2 ? 'Contraseña débil' : score < 3 ? 'Casi lista' : 'Contraseña segura'}
+      </AppText>
+    </View>
+  );
+}
+
+function OtpInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const inputs = useRef<(TextInputInstance | null)[]>([]);
+  const [focused, setFocused] = useState(0);
+
+  return (
+    <View style={styles.otpRow}>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <TextInput
+          key={`otp-${index}`}
+          ref={(node) => {
+            inputs.current[index] = node;
+          }}
+          value={value[index] ?? ''}
+          onChangeText={(text) => {
+            const digits = text.replace(/\D/g, '');
+            if (!digits) {
+              onChange(value.slice(0, index));
+              return;
+            }
+            const next = value.split('');
+            digits
+              .slice(0, 6 - index)
+              .split('')
+              .forEach((digit, offset) => {
+                next[index + offset] = digit;
+              });
+            const joined = next.join('').slice(0, 6);
+            onChange(joined);
+            const target = Math.min(index + digits.length, 5);
+            inputs.current[target]?.focus();
+            setFocused(target);
+          }}
+          onKeyPress={({ nativeEvent }) => {
+            if (nativeEvent.key === 'Backspace' && !value[index] && index > 0) {
+              inputs.current[index - 1]?.focus();
+              onChange(value.slice(0, index - 1));
+            }
+          }}
+          onFocus={() => setFocused(index)}
+          accessibilityLabel={`Dígito ${index + 1} de 6`}
+          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+          keyboardType="number-pad"
+          maxLength={6}
+          autoFocus={index === 0}
+          textContentType={index === 0 ? 'oneTimeCode' : 'none'}
+          style={[styles.otpCell, focused === index && styles.otpCellFocused, value[index] && styles.otpCellFilled]}
+        />
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingTop: spacing.sm, gap: spacing.md, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    gap: spacing.md,
-    maxWidth: 560,
-    width: '100%',
-    alignSelf: 'center',
+  pressed: { opacity: 0.7 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingVertical: 4 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  back: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
-  backText: { color: colors.brand, fontWeight: '600', fontSize: 14 },
-  header: { gap: spacing.sm, marginTop: spacing.sm },
-  stepText: {
-    color: colors.brand,
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  title: { fontSize: 30, fontWeight: '800', color: colors.text, letterSpacing: -0.4 },
-  subtitle: { fontSize: 15, lineHeight: 22, color: colors.muted },
-  progress: { flexDirection: 'row', gap: 6, marginVertical: spacing.xs },
-  progressDot: {
+  header: { gap: spacing.xs, marginTop: spacing.xs },
+  stepText: { textTransform: 'uppercase', letterSpacing: 0.7 },
+  progress: { flexDirection: 'row', gap: 6 },
+  progressBar: {
     flex: 1,
-    height: 4,
+    height: 5,
     borderRadius: radius.pill,
     backgroundColor: colors.border,
   },
-  progressDotActive: { backgroundColor: colors.brand },
-  form: { gap: spacing.md },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text },
-  input: {
-    backgroundColor: colors.surface,
+  progressBarActive: { backgroundColor: colors.brand },
+  roleSwitch: {
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: colors.bgAlt,
+    borderRadius: radius.lg,
+    padding: 5,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: colors.text,
   },
-  passwordRow: {
+  rolePill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'center',
+    gap: 7,
+    minHeight: 46,
     borderRadius: radius.md,
-    paddingRight: spacing.xs,
   },
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: colors.text,
-  },
-  showButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
-  showText: { color: colors.brand, fontWeight: '700', fontSize: 12 },
-  codeInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 28,
-    letterSpacing: 10,
-    textAlign: 'center',
-    color: colors.text,
-  },
-  helper: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  note: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.md },
-  noteText: { color: colors.brandDark, fontSize: 13, lineHeight: 19 },
-  devBox: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: 2,
-  },
-  devLabel: { color: colors.brandDark, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  devCode: { color: colors.brandDark, fontSize: 26, fontWeight: '800', letterSpacing: 6 },
-  devHint: { color: colors.muted, fontSize: 11, textAlign: 'center' },
-  button: {
-    backgroundColor: colors.brand,
+  rolePillSelected: { backgroundColor: colors.surface },
+  roleIcon: {
+    width: 30,
+    height: 30,
     borderRadius: radius.pill,
-    paddingVertical: 16,
+    backgroundColor: colors.bgAlt,
     alignItems: 'center',
-    marginTop: spacing.xs,
-    minHeight: 52,
     justifyContent: 'center',
   },
-  buttonPressed: { backgroundColor: colors.brandDark },
-  buttonBusy: { opacity: 0.8 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  secondaryButton: { alignSelf: 'center', paddingVertical: spacing.sm },
-  secondaryText: { color: colors.brand, fontWeight: '700', fontSize: 14 },
-  resend: { alignSelf: 'center', paddingVertical: spacing.xs },
-  resendText: { color: colors.brand, fontWeight: '600', fontSize: 14 },
-  changeData: { color: colors.muted, fontSize: 13 },
-  forgot: { alignSelf: 'flex-end', paddingVertical: 2 },
-  forgotText: { color: colors.muted, fontSize: 13 },
-  infoBox: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.md },
-  infoText: { color: colors.brandDark, fontSize: 13, lineHeight: 19 },
-  errorBox: { backgroundColor: '#FEF2F2', borderRadius: radius.md, padding: spacing.md },
-  errorText: { color: colors.danger, fontSize: 13, lineHeight: 19 },
-  hint: { color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  roleIconSelected: { backgroundColor: colors.brandTint },
+  form: { gap: spacing.md },
+  forgot: { alignSelf: 'flex-end', marginTop: -4 },
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -4 },
+  strengthBar: { flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: colors.border },
+  strengthWeak: { backgroundColor: colors.danger },
+  strengthMid: { backgroundColor: colors.accent },
+  strengthStrong: { backgroundColor: colors.success },
+  otpWrap: { gap: spacing.sm },
+  otpRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+  otpCell: {
+    flex: 1,
+    height: 58,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  otpCellFocused: { borderColor: colors.brand, backgroundColor: colors.brandTint },
+  otpCellFilled: { borderColor: colors.brandSoft },
+  devBox: { alignItems: 'center', gap: 4, backgroundColor: colors.brandTint },
+  devHeader: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  devCode: { letterSpacing: 7, fontSize: 30, lineHeight: 38 },
+  resendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  resendButton: { paddingVertical: 4 },
+  resendText: { fontWeight: '700' },
+  changeData: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  switchLink: { fontWeight: '800' },
+  vendorHint: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  legal: { marginTop: spacing.sm },
 });
